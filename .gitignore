@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+data/
+*.sqlite*
+*.log
+.venv/
+__pycache__/
+*.bak
+*.old
+*.backup
+*~
+*.tmp
+*.temp
+tmp/
+temp/
+venv/
