@@ -32,9 +32,9 @@ Mostre uma execução concluída da pergunta “Quantos participantes há na bas
 
 ## 2:15 a 2:50 — Observabilidade
 
-Abra Observabilidade, mostre pelo menos cinco traces concluídos e detalhe um deles.
+Abra o Langfuse, projeto triagem, e mostre cinco execuções OXICOR chat. Abra uma execução para mostrar a pergunta, ferramentas, especialistas, condensador, duração e uso de tokens. A área Observabilidade do Streamlit também mantém o registro local.
 
-“Implementei um equivalente local de observabilidade em SQLite. Cada solicitação registra identificador, duração, status, rota e eventos. Os eventos mostram as ferramentas, as respostas verificadas e o uso de tokens quando o provedor informa. Isso permite analisar uma falha e rastrear a origem da resposta. Não estou usando Langfuse nesta versão.”
+“Integrei o Langfuse ao fluxo CrewAI e Ollama usado pelo Streamlit. Aqui aparecem os registros de execuções reais, com ferramentas, especialistas, respostas verificadas, duração e tokens. O registro local em SQLite continua disponível. A tarifa de API do modelo local é zero; isso não significa ausência de custos de energia e hardware.”
 
 ## 2:50 a 3:30 — Avaliação
 

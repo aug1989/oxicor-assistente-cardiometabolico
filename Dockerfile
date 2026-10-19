@@ -7,6 +7,7 @@ COPY app.py .
 COPY reporting.py reports_ui.py natural_reports.py .
 COPY ml_traditional.py multi_agents.py duckdb_tools.py usage_policy.py .
 COPY observability.py local_rag.py train_reproducible.py evaluate_golden.py initialize_app.py run_tests.py .
+COPY langfuse_export.py .
 COPY data/models/etapa2/ /app/model_seed/
 COPY rag/ /app/rag/
 COPY evaluation/ /app/evaluation/

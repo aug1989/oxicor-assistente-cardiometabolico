@@ -55,3 +55,5 @@ O painel Avaliação apresenta os resultados reais de `evaluate_golden.py`. A su
 HistGradientBoostingClassifier, com 19 preditores e sem ID. O limiar 0,13 foi escolhido na validação. As métricas são de uma partição de teste separada; perfis idênticos não atravessam as partições. O modelo anterior é preservado localmente, mas a inferência prioriza o artefato de `data/models/etapa2/`.
 
 O resultado se refere ao alvo observado no CDC, sem horizonte de previsão futura. A baixa precisão e a ausência de validação externa impedem tratar a saída como diagnóstico ou risco individual calibrado.
+
+O mesmo fluxo exporta traces para Langfuse Cloud por OTLP/HTTP: pergunta, ferramentas, gerações dos especialistas e condensador, resposta verificada, duração e tokens. As chaves ficam no .env local, ignorado pelo Git e Docker. Cinco execuções reais foram confirmadas no servidor; uma combinou DuckDB e RAG.

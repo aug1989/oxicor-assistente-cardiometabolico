@@ -60,7 +60,7 @@ O limiar é 0,13. A baixa precisão resulta em muitos falsos positivos. A escolh
 
 ## Observabilidade e avaliação
 
-As áreas **Observabilidade** e **Avaliação** ficam no menu do Streamlit. A primeira registra ID, horários UTC, duração, status, rota, ferramentas, respostas verificadas e tokens quando disponíveis. A segunda lê os resultados persistidos da suíte. São implementações locais equivalentes, não instalações do Langfuse ou DeepEval.
+As áreas **Observabilidade** e **Avaliação** ficam no menu do Streamlit. A primeira registra ID, horários UTC, duração, status, rota, ferramentas, respostas verificadas e tokens quando disponíveis. A segunda lê os resultados persistidos da suíte. O fluxo também exporta traces reais para Langfuse Cloud por OTLP/HTTP, incluindo ferramentas, gerações Ollama, duração e tokens. A avaliação permanece uma implementação equivalente local com critérios determinísticos, sem DeepEval.
 
 ```sh
 docker compose exec chat python evaluate_golden.py
@@ -86,3 +86,11 @@ O histórico é local e compartilhado entre abas. Esta versão não possui auten
 - `tests/`: testes técnicos.
 
 Nenhuma credencial `.env`, histórico de conversas ou banco de uso deve ser versionado. Os CSVs pequenos de triagem e participantes são os exemplos de teste já presentes na etapa 1.
+
+### Langfuse
+
+Preencha `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` e `LANGFUSE_BASE_URL` no `.env` local, usando `.env.example` como referência. Nunca versione o `.env`. Recrie o container após alterar o ambiente. A exportação usa HTTPS e a autenticação oficial do Langfuse; falhas não interrompem o chat. O painel local mostra o resultado do envio.
+
+Cada pergunta nova envia seu texto e a resposta ao projeto configurado: use apenas dados fictícios na demonstração. O registro inclui a resposta verificada da aplicação, não o raciocínio interno do modelo. Os tokens de chamadas sucessivas são separados para evitar dupla contagem do acumulado CrewAI. A tarifa zero indica somente a API Ollama local; não inclui infraestrutura.
+
+As evidências Langfuse acompanham o relatório entregue separadamente; traces e capturas não são publicados no repositório. Cinco consultas reais incluem uma solicitação composta de DuckDB e RAG. Os testes de unidade devem ser executados com `LANGFUSE_PUBLIC_KEY` e `LANGFUSE_SECRET_KEY` vazios, evitando exportar registros simulados.

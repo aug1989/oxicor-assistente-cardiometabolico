@@ -42,13 +42,13 @@ O RAG desta entrega usa TF-IDF para recuperar até dois trechos de três resumos
 
 ## Observabilidade
 
-Foi implementado um equivalente local de observabilidade em SQLite, apresentado na área Observabilidade do Streamlit. Cada solicitação recebe identificador, horário UTC, duração, status, rota e eventos de ferramentas e agentes. O uso de tokens é registrado quando informado pelo provedor. O painel permite exportar JSON e inspecionar uma execução. Foram exportados 15 registros reais, incluindo 13 execuções concluídas com agentes. A captura anexa mostra pelo menos cinco traces. Não se trata de uma instalação do Langfuse. O processamento local não tem tarifa de API de LLM; energia e hardware não foram contabilizados.
+A observabilidade combina SQLite local e Langfuse Cloud, no projeto triagem. Cada solicitação recebe identificador, horário, duração, status, rota e eventos. A exportação OTLP conecta a pergunta, ferramentas, especialistas e condensador em uma execução, registrando modelo e tokens informados pelo CrewAI. As respostas registradas são aquelas verificadas pela aplicação. Cinco consultas reais completas foram enviadas; a captura anexa documenta os traces. As credenciais ficam exclusivamente no ambiente local, fora do repositório. Falhas de telemetria não interrompem o chat. O Ollama local não tem tarifa de API; energia e hardware não foram contabilizados.
 
 ## Golden dataset e testes
 
 A suíte equivalente local executou 15 perguntas predefinidas no mesmo fluxo CrewAI do chat: consultas de dados, solicitação incompleta de ML, perfil fictício completo, recuperação científica, saudação e recusa fora do escopo. Os resultados foram 14 aprovações em 15 casos; casos que exigem revisão: G11. Cada aprovação exige rota correta e cobertura de todos os grupos de termos esperados. A relevância corresponde à fração desses grupos presentes. O grounding verifica preservação integral das evidências das ferramentas; sem ferramenta, é não aplicável.
 
-Essas medidas são proxies determinísticos de regressão, não avaliação semântica completa por juiz LLM. A preservação textual é favorecida pela própria arquitetura e não comprova a correção clínica dos trechos. A suíte não utiliza DeepEval e sua metodologia está publicada no código. Separadamente, 34 testes técnicos passaram, cobrindo roteamento, consultas restritas, limites de uso, preservação de evidências, observabilidade e inferência. Resultados e capturas acompanham a entrega, sem substituir a análise crítica por uma alegação genérica de qualidade.
+Essas medidas são proxies determinísticos de regressão, não avaliação semântica completa por juiz LLM. A preservação textual é favorecida pela própria arquitetura e não comprova a correção clínica dos trechos. A suíte não utiliza DeepEval e sua metodologia está publicada no código. Separadamente, 38 testes técnicos passaram, cobrindo roteamento, consultas restritas, limites de uso, preservação de evidências, observabilidade e inferência. Resultados e capturas acompanham a entrega, sem substituir a análise crítica por uma alegação genérica de qualidade.
 
 ## Limitações e próximos passos
 
@@ -76,4 +76,4 @@ A revisão humana continua necessária nesta etapa.
 
 [1] UCI Machine Learning Repository. CDC Diabetes Health Indicators. DOI 10.24432/C53919. https://archive.ics.uci.edu/dataset/891/cdc+diabetes+health+indicators. Consulta em 19/10/2026.
 
-Evidências de execução: metricas_modelo.json, golden_results.json, testes_tecnicos.json e traces.json. Código: https://github.com/aug1989/oxicor-assistente-cardiometabolico. As capturas anexas são da aplicação executada localmente.
+Evidências de execução: metricas_modelo.json, golden_results.json, testes_tecnicos.json e traces.json. Código: https://github.com/aug1989/oxicor-assistente-cardiometabolico. As capturas anexas mostram a aplicação e o Langfuse. Evidência adicional: langfuse_live.json.

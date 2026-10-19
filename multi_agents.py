@@ -115,7 +115,9 @@ def run_multi_agent(question, rag_consult, on_stage=None, on_event=None):
     }
     condenser = agent('Condensador', 'Condensar respostas sem acrescentar fatos. Preservar números, fontes e limitações.')
 
+    previous_usage = {}
     def execute(current, description, transform=None):
+        nonlocal previous_usage
         if on_stage:
             on_stage(current.role)
         start = time.monotonic()
@@ -130,7 +132,12 @@ def run_multi_agent(question, rag_consult, on_stage=None, on_event=None):
         usage = getattr(result, 'token_usage', None)
         if hasattr(usage, 'model_dump'):
             usage = usage.model_dump()
-        emit(current.role, text, seconds=round(time.monotonic() - start, 2), token_usage=usage if isinstance(usage, dict) else None)
+        if isinstance(usage,dict):
+            cumulative=dict(usage)
+            if previous_usage and usage.get('successful_requests',0)>previous_usage.get('successful_requests',0):
+                usage={key:max(0,value-previous_usage.get(key,0)) if isinstance(value,(int,float)) else value for key,value in usage.items()}
+            previous_usage=cumulative
+        emit(current.role, text, seconds=round(time.monotonic() - start, 2), token_usage=usage if isinstance(usage, dict) else None, prompt_input=description)
         return text
 
     routes = select_routes(question)
