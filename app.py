@@ -23,7 +23,7 @@ def database():
 def save_chat(cid):
     chat = st.session_state.chats[cid]
     # Somente dados do histórico; nunca serializar ambiente ou session_state inteiro.
-    messages = [{k: m[k] for k in ('role', 'content', 'created_at', 'error', 'mode', 'pending') if k in m}
+    messages = [{k: m[k] for k in ('role', 'content', 'created_at', 'error', 'mode', 'pending', 'agent_trace', 'route') if k in m}
                 for m in chat['messages']]
     with database() as db:
         db.execute('INSERT INTO chats VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title, messages=excluded.messages',
@@ -217,14 +217,27 @@ def flowise_tokens(question, chat, message):
             raise ValueError('Stream incompleto ou vazio')
 
 
-st.set_page_config(page_title='OXICOR · Chat e Relatórios', page_icon='💬')
-area = st.sidebar.radio('Área', ['Chat', 'Relatórios'], key='oxicor_area')
+st.set_page_config(page_title='OXICOR · Chat, Relatórios e ML', page_icon='💬')
+area = st.sidebar.radio('Área', ['Chat', 'Relatórios', 'ML Tradicional', 'Observabilidade', 'Avaliação'], key='oxicor_area')
+if area == 'Observabilidade':
+    from observability import render_observability
+    render_observability()
+    st.stop()
+if area == 'Avaliação':
+    from observability import render_evaluation
+    render_evaluation()
+    st.stop()
 if area == 'Relatórios':
     from reports_ui import render_reports
     render_reports()
     st.stop()
+if area == 'ML Tradicional':
+    from ml_traditional import render_ml_traditional
+    render_ml_traditional()
+    st.stop()
 API_URL = os.environ.get('FLOWISE_API_URL', '').strip()
 API_KEY = os.environ.get('FLOWISE_API_KEY', '').strip()
+
 parsed_url = urlparse(API_URL)
 url_valid = parsed_url.scheme in ('http', 'https') and bool(parsed_url.netloc)
 if 'chats' not in st.session_state:
@@ -239,9 +252,10 @@ with st.expander('Exemplos de perguntas à base científica'):
     st.write('• Segundo a base OXICOR, quais valores definem hipertensão arterial?')
     st.write('• Segundo a base OXICOR, como a obesidade se relaciona ao risco cardiovascular?')
     st.write('• Segundo a base OXICOR, qual é a relação entre diabetes tipo 2 e risco cardiovascular?')
-if not url_valid:
-    st.error('Configuração incompleta: confira FLOWISE_API_URL no .env e recrie somente o container Streamlit.')
+if not url_valid and os.getenv('OXICOR_RAG_BACKEND', 'local') == 'flowise':
+    st.warning('FLOWISE_API_URL não configurada: perguntas que exigem RAG não poderão ser respondidas.')
 with st.sidebar:
+    st.caption('Uso compartilhado: 1 atendimento por vez · 30 por hora · 100 em 24 horas. Perguntas de até 3.000 caracteres, no contexto OXICOR.')
     st.header('Conversas')
     st.button('Nova conversa', on_click=new_chat, use_container_width=True)
     for cid, item in reversed(list(st.session_state.chats.items())):
@@ -251,17 +265,26 @@ with st.sidebar:
     st.caption('Histórico local compartilhado entre as abas deste aplicativo, preservado após atualizar a página.')
     if not API_KEY or API_KEY == 'INSIRA_SUA_CHAVE_AQUI':
         st.info('Confira FLOWISE_API_KEY no .env se o fluxo exigir autenticação.')
+    st.caption(f"Modelo CrewAI: {os.environ.get('CREWAI_LLM', 'ollama/qwen3:4b-instruct-oxicor-cpu')}")
 
 chat = st.session_state.chats[st.session_state.active_chat_id]
 for message in chat['messages']:
     with st.chat_message(message['role']):
-        st.markdown(visible_answer(message['content']) if message['role'] == 'assistant' else message['content'])
+        st.markdown(
+            visible_answer(message['content']) if message['role'] == 'assistant' else message['content'],
+            unsafe_allow_html=False,
+        )
         if message.get('error'):
             st.error(message['error'])
-        if message.get('mode') == 'integral':
-            st.caption('O Flowise retornou uma resposta integral, sem streaming nesta chamada.')
+        if message.get('route'):
+            st.caption(f"Rota selecionada: {message['route']}")
+        if message.get('agent_trace'):
+            with st.expander('Ver handoffs e respostas dos agentes'):
+                for step in message['agent_trace']:
+                    st.markdown(f"**{step['agent']}**", unsafe_allow_html=False)
+                    st.markdown(step['content'], unsafe_allow_html=False)
 
-if question := st.chat_input('Digite sua mensagem…', disabled=not url_valid):
+if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
     if not chat['messages']:
         chat['title'] = question[:40] + ('…' if len(question) > 40 else '')
     chat['messages'].append({'role': 'user', 'content': question, 'created_at': now()})
@@ -272,8 +295,41 @@ if question := st.chat_input('Digite sua mensagem…', disabled=not url_valid):
     save_chat(st.session_state.active_chat_id)
     with st.chat_message('assistant'):
         try:
-            with st.spinner('Aguardando resposta do Flowise…'):
-                st.write_stream(flowise_tokens(question, chat, answer))
+            from multi_agents import run_multi_agent
+
+            def consult_rag(prompt):
+                if os.getenv('OXICOR_RAG_BACKEND', 'local') == 'local':
+                    from local_rag import consult_local
+                    return consult_local(prompt)
+                tool_message = {'content': '', 'mode': None}
+                return ''.join(flowise_tokens(prompt, chat, tool_message))
+
+            def show_stage(agent_name):
+                progress.update(label=f'Agente ativo: {agent_name}', state='running', expanded=True)
+
+            def show_event(event):
+                safe = dict(event)
+                safe['content'] = visible_answer(event['content'])
+                answer.setdefault('agent_trace', []).append(safe)
+                save_chat(st.session_state.active_chat_id)
+                st.markdown(f"**{safe['agent']} · {safe.get('kind', 'resultado')}**")
+                st.markdown(safe['content'], unsafe_allow_html=False)
+
+            with st.status('Iniciando orquestração CrewAI…', expanded=True) as progress:
+                result = run_multi_agent(question, consult_rag, on_stage=show_stage, on_event=show_event)
+                answer['content'] = visible_answer(result['answer'])
+                answer['route'] = result['route']
+                answer['agent_trace'] = [
+                    {**step, 'content': visible_answer(step['content'])}
+                    for step in result['trace']
+                ]
+                answer['mode'] = 'crewai'
+                progress.update(label='Orquestração concluída', state='complete', expanded=False)
+            st.markdown(answer['content'], unsafe_allow_html=False)
+            with st.expander('Ver handoffs e respostas dos agentes'):
+                for step in answer['agent_trace']:
+                    st.markdown(f"**{step['agent']}**", unsafe_allow_html=False)
+                    st.markdown(step['content'], unsafe_allow_html=False)
         except requests.HTTPError as exc:
             code = exc.response.status_code
             answer['error'] = ('Autenticação recusada. Confira a chave no .env.' if code in (401, 403)
@@ -282,6 +338,8 @@ if question := st.chat_input('Digite sua mensagem…', disabled=not url_valid):
             answer['error'] = 'Tempo de espera excedido. A resposta parcial, se houver, foi preservada.'
         except (requests.RequestException, ValueError):
             answer['error'] = 'A resposta foi interrompida ou inválida. Confira o Flowise; o texto parcial foi preservado.'
+        except Exception:
+            answer['error'] = 'Não foi possível concluir a orquestração. Confira o modelo CrewAI, o Ollama e as integrações configuradas.'
         finally:
             answer['pending'] = False
             save_chat(st.session_state.active_chat_id)

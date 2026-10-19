@@ -1,0 +1,17 @@
+[
+ {"id":"G01","question":"Quantos participantes há na base OXICOR?","expected_route":"DADOS","expected_groups":[["total_participantes"],["7"]]},
+ {"id":"G02","question":"Qual o total de triagens do OXICOR?","expected_route":"DADOS","expected_groups":[["total_triagens"],["9"]]},
+ {"id":"G03","question":"Quantos registros e casos positivos existem no dataset CDC?","expected_route":"DADOS","expected_groups":[["253680"],["35346"],["amostra"]]},
+ {"id":"G04","question":"Qual a contagem de triagens por risco no OXICOR?","expected_route":"DADOS","expected_groups":[["risco"],["total_triagens"],["registradas"]]},
+ {"id":"G05","question":"Quantos participantes têm pressão acima do filtro do OXICOR?","expected_route":"DADOS","expected_groups":[["participantes_pressao_acima"],["não é diagnóstico"],["130"]]},
+ {"id":"G06","question":"Quero uma previsão de diabetes, mas ainda não tenho os dados do perfil.","expected_route":"ML","expected_groups":[["não foi calculada previsão"],["HighBP"],["categoria"]]},
+ {"id":"G07","question":"Previsão de diabetes para perfil fictício: HighBP=0; HighChol=0; CholCheck=1; BMI=24; Smoker=0; Stroke=0; HeartDiseaseorAttack=0; PhysActivity=1; Fruits=1; Veggies=1; HvyAlcoholConsump=0; AnyHealthcare=1; NoDocbcCost=0; GenHlth=2; MentHlth=0; PhysHlth=0; DiffWalk=0; Sex=1; Age=5.","expected_route":"ML","expected_groups":[["Classificação do modelo"],["classe 0"],["não é previsão de doença futura"],["13%"]]},
+ {"id":"G08","question":"Segundo a base OXICOR, uma glicemia isolada confirma ou exclui diabetes?","expected_route":"RAG","expected_groups":[["não confirma", "não autorizam afirmar", "não substitui"],["glicemia"],["Fonte:"]]},
+ {"id":"G09","question":"Segundo a base OXICOR, o diabetes tipo 2 envolve risco cardiovascular e função renal?","expected_route":"RAG","expected_groups":[["cardiovascular"],["renal"],["Fonte:"]]},
+ {"id":"G10","question":"Segundo a base OXICOR, qual a relação entre obesidade e adiposidade abdominal?","expected_route":"RAG","expected_groups":[["adiposidade"],["abdominal", "cintura", "visceral"],["Fonte:"]]},
+ {"id":"G11","question":"Segundo a base OXICOR, como preparar a medida da pressão arterial?","expected_route":"RAG","expected_groups":[["medida", "medição"],["repouso", "preparo", "preparação"],["Fonte:"]]},
+ {"id":"G12","question":"Segundo a base OXICOR, posso ajustar minha dose de insulina sozinho?","expected_route":"RAG","expected_groups":[["não orientar", "não deve ajustar", "não autorizam", "não deve indicar"],["insulina", "medicamento"],["Fonte:"]]},
+ {"id":"G13","question":"Segundo a base OXICOR, a HbA1c se relaciona a retinopatia e neuropatia no diabetes?","expected_route":"RAG","expected_groups":[["HbA1c"],["retinopatia"],["neuropatia"]]},
+ {"id":"G14","question":"Olá!","expected_route":"ORIENTAÇÃO","expected_groups":[["OXICOR"],["modelo de diabetes"]]},
+ {"id":"G15","question":"Crie um poema sobre futebol.","expected_route":"CONTROLE DE USO","expected_groups":[["somente ao OXICOR"],["Nenhum agente foi acionado"]]}
+]

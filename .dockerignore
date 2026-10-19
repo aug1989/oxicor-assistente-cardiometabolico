@@ -1,0 +1,6 @@
+.env
+.env.*
+__pycache__
+.git
+README.md
+*.ps1

@@ -1,0 +1,426 @@
+{
+  "started_at": "2026-10-19T21:04:07.532035+00:00",
+  "methodology": "Execução real do chat com CrewAI/Ollama. Relevância = fração de grupos de termos esperados presentes; aprovação exige todos e rota correta. Grounding = preservação integral das evidências das ferramentas na resposta (1 ou 0); sem ferramenta, não aplicável. São proxies determinísticos, não validação semântica completa nem comprovação clínica. Casos definidos antes da execução. Limites de uso mantidos.",
+  "results": [
+    {
+      "id": "G01",
+      "question": "Quantos participantes há na base OXICOR?",
+      "expected_route": "DADOS",
+      "expected_groups": [
+        [
+          "total_participantes"
+        ],
+        [
+          "7"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "DADOS",
+      "answer": "### Especialista DuckDB\n{\"fonte\": \"CSV local de participantes.\", \"resultado\": [{\"total_participantes\": 7}]}",
+      "trace_id": "e612b5ae-7445-48bf-b083-c7038b2cdb0e",
+      "seconds": 98.66
+    },
+    {
+      "id": "G02",
+      "question": "Qual o total de triagens do OXICOR?",
+      "expected_route": "DADOS",
+      "expected_groups": [
+        [
+          "total_triagens"
+        ],
+        [
+          "9"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "DADOS",
+      "answer": "### Especialista DuckDB\n{\"fonte\": \"CSV local de triagens.\", \"resultado\": [{\"total_triagens\": 9}]}",
+      "trace_id": "6f1c14c1-544c-48e0-8112-d395466fe151",
+      "seconds": 54.57
+    },
+    {
+      "id": "G03",
+      "question": "Quantos registros e casos positivos existem no dataset CDC?",
+      "expected_route": "DADOS",
+      "expected_groups": [
+        [
+          "253680"
+        ],
+        [
+          "35346"
+        ],
+        [
+          "amostra"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "DADOS",
+      "answer": "### Especialista DuckDB\n{\"fonte\": \"Dataset público CDC usado no projeto; estatísticas da amostra, não da população.\", \"resultado\": [{\"registros\": 253680, \"imc_medio\": 28.382363607694735, \"classe_positiva\": 35346}]}",
+      "trace_id": "e4b477a7-5a84-489c-9a97-c5e05b2b8f28",
+      "seconds": 51.21
+    },
+    {
+      "id": "G04",
+      "question": "Qual a contagem de triagens por risco no OXICOR?",
+      "expected_route": "DADOS",
+      "expected_groups": [
+        [
+          "risco"
+        ],
+        [
+          "total_triagens"
+        ],
+        [
+          "registradas"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "DADOS",
+      "answer": "### Especialista DuckDB\n{\"fonte\": \"CSV local de triagens; categorias já registradas.\", \"resultado\": [{\"risco\": \"alto\", \"total_triagens\": 7}, {\"risco\": \"baixo\", \"total_triagens\": 2}]}",
+      "trace_id": "eeb1966e-937d-4554-8700-be35b180704d",
+      "seconds": 30.72
+    },
+    {
+      "id": "G05",
+      "question": "Quantos participantes têm pressão acima do filtro do OXICOR?",
+      "expected_route": "DADOS",
+      "expected_groups": [
+        [
+          "participantes_pressao_acima"
+        ],
+        [
+          "não é diagnóstico"
+        ],
+        [
+          "130"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "DADOS",
+      "answer": "### Especialista DuckDB\n{\"fonte\": \"CSV local de triagens. Filtro operacional existente: PAS >= 130 ou PAD >= 85; não é diagnóstico.\", \"resultado\": [{\"participantes_pressao_acima\": 6}]}",
+      "trace_id": "4e358b0b-0b36-4219-ab4f-79657f7ed447",
+      "seconds": 20.81
+    },
+    {
+      "id": "G06",
+      "question": "Quero uma previsão de diabetes, mas ainda não tenho os dados do perfil.",
+      "expected_route": "ML",
+      "expected_groups": [
+        [
+          "não foi calculada previsão"
+        ],
+        [
+          "HighBP"
+        ],
+        [
+          "categoria"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "ML",
+      "answer": "### Especialista ML\nO modelo está disponível. Para uma demonstração, envie um perfil fictício no formato campo=valor com: HighBP, HighChol, CholCheck, BMI, Smoker, Stroke, HeartDiseaseorAttack, PhysActivity, Fruits, Veggies, HvyAlcoholConsump, AnyHealthcare, NoDocbcCost, GenHlth, MentHlth, PhysHlth, DiffWalk, Sex, Age. Age usa a categoria do dataset, não idade em anos. Sem esses dados, não foi calculada previsão.",
+      "trace_id": "9bfd9442-aeec-46e5-9a2d-61acf1c873d6",
+      "seconds": 92.23
+    },
+    {
+      "id": "G07",
+      "question": "Previsão de diabetes para perfil fictício: HighBP=0; HighChol=0; CholCheck=1; BMI=24; Smoker=0; Stroke=0; HeartDiseaseorAttack=0; PhysActivity=1; Fruits=1; Veggies=1; HvyAlcoholConsump=0; AnyHealthcare=1; NoDocbcCost=0; GenHlth=2; MentHlth=0; PhysHlth=0; DiffWalk=0; Sex=1; Age=5.",
+      "expected_route": "ML",
+      "expected_groups": [
+        [
+          "Classificação do modelo"
+        ],
+        [
+          "classe 0"
+        ],
+        [
+          "não é previsão de doença futura"
+        ],
+        [
+          "13%"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "ML",
+      "answer": "### Especialista ML\nClassificação do modelo ML: compatível com a classe negativa do dataset (classe 0). Escore estimado para a classe positiva: 1.4%. Limiar de classificação: 13%. O alvo representa diabetes ou pré-diabetes no dataset; não é previsão de doença futura nem diagnóstico. Isso é apoio analítico educacional e não substitui avaliação clínica.",
+      "trace_id": "bdea111c-42f9-4932-ba1c-860a4bf779a7",
+      "seconds": 159.55
+    },
+    {
+      "id": "G08",
+      "question": "Segundo a base OXICOR, uma glicemia isolada confirma ou exclui diabetes?",
+      "expected_route": "RAG",
+      "expected_groups": [
+        [
+          "não confirma",
+          "não autorizam afirmar",
+          "não substitui"
+        ],
+        [
+          "glicemia"
+        ],
+        [
+          "Fonte:"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "RAG",
+      "answer": "### Especialista RAG\nTrechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_03_DM2_RESUMO.md · Limites para uso educacional**\n\n- Uma glicemia isolada não confirma nem exclui DM2.\n- A interpretação depende do tipo de coleta e de confirmação apropriada.\n- Não inferir sintomas, hábitos, doenças ou histórico não coletados.\n- Não prescrever dieta, exercício, monitorização ou medicamento.\n- Não orientar alteração de insulina ou antidiabéticos.\n- Metas de HbA1c e redução de peso são individualizadas.\n- Risco cardiorrenal e síndrome metabólica dependem do conjunto de dados disponíveis.\n\n**Fonte: OXICOR_RAG_03_DM2_RESUMO.md · Visão integrada do diabetes tipo 2**\n\nO documento apresenta o diabetes mellitus tipo 2 (DM2) como condição progressiva cuja abordagem ultrapassa a glicemia isolada. O manejo contemporâneo integra adiposidade, prevenção de complicações microvasculares, risco cardiovascular, insuficiência cardíaca e função renal. Resistência à insulina, disfunção progressiva da célula beta, inflamação e gordura ectópica compõem esse processo.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais.",
+      "trace_id": "1930b0fa-2d3f-4dd6-b25b-873ae017733b",
+      "seconds": 98.85
+    },
+    {
+      "id": "G09",
+      "question": "Segundo a base OXICOR, o diabetes tipo 2 envolve risco cardiovascular e função renal?",
+      "expected_route": "RAG",
+      "expected_groups": [
+        [
+          "cardiovascular"
+        ],
+        [
+          "renal"
+        ],
+        [
+          "Fonte:"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "RAG",
+      "answer": "### Especialista RAG\nTrechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_03_DM2_RESUMO.md · Visão integrada do diabetes tipo 2**\n\nO documento apresenta o diabetes mellitus tipo 2 (DM2) como condição progressiva cuja abordagem ultrapassa a glicemia isolada. O manejo contemporâneo integra adiposidade, prevenção de complicações microvasculares, risco cardiovascular, insuficiência cardíaca e função renal. Resistência à insulina, disfunção progressiva da célula beta, inflamação e gordura ectópica compõem esse processo.\n\n**Fonte: OXICOR_RAG_03_DM2_RESUMO.md · Avaliação cardiometabólica e renal**\n\nA diretriz recomenda avaliação ampla das pessoas com DM2, incluindo HbA1c, IMC, função renal e risco cardiorrenal. A razão albumina-creatinina urinária e a taxa de filtração glomerular ajudam a avaliar doença renal. Pressão arterial, perfil lipídico, tabagismo quando conhecido e doença cardiovascular integram o risco.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais.",
+      "trace_id": "87522a99-5774-415d-8f9f-f7687995dfb5",
+      "seconds": 91.55
+    },
+    {
+      "id": "G10",
+      "question": "Segundo a base OXICOR, qual a relação entre obesidade e adiposidade abdominal?",
+      "expected_route": "RAG",
+      "expected_groups": [
+        [
+          "adiposidade"
+        ],
+        [
+          "abdominal",
+          "cintura",
+          "visceral"
+        ],
+        [
+          "Fonte:"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "RAG",
+      "answer": "### Especialista RAG\nTrechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_02_OBESIDADE_CARDIOVASCULAR_RESUMO.md · Adiposidade abdominal e avaliação**\n\nA obesidade abdominal possui relação particularmente importante com risco cardiometabólico. A circunferência da cintura é apontada como preditora de morbidade e mortalidade mesmo dentro de diferentes categorias de IMC. Relação cintura-quadril e relação cintura-altura são alternativas para identificar possível acúmulo visceral.\n\n**Fonte: OXICOR_RAG_02_OBESIDADE_CARDIOVASCULAR_RESUMO.md · Adiposidade abdominal e avaliação**\n\nA diretriz propõe considerar risco de doença aterosclerótica cardiovascular e insuficiência cardíaca em adultos com sobrepeso ou obesidade. Diabetes tipo 2, síndrome metabólica, doença renal crônica, doença cardiovascular estabelecida, apneia obstrutiva do sono e outros elementos podem elevar o risco, mas somente podem ser considerados quando efetivamente conhecidos.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais.",
+      "trace_id": "604d19ea-b00e-4fef-b114-e165ac25a141",
+      "seconds": 117.0
+    },
+    {
+      "id": "G11",
+      "question": "Segundo a base OXICOR, como preparar a medida da pressão arterial?",
+      "expected_route": "RAG",
+      "expected_groups": [
+        [
+          "medida",
+          "medição"
+        ],
+        [
+          "repouso",
+          "preparo",
+          "preparação"
+        ],
+        [
+          "Fonte:"
+        ]
+      ],
+      "relevance": 0.6666666666666666,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        false,
+        true
+      ],
+      "passed": false,
+      "route": "RAG",
+      "answer": "### Especialista RAG\nTrechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Medida adequada**\n\nÉ apropriado obter mais de uma leitura, respeitando intervalo entre elas, e registrar valores e circunstâncias. A monitorização residencial da pressão arterial (MRPA) e a monitorização ambulatorial da pressão arterial (MAPA) ampliam a avaliação porque registram a PA fora do consultório. Esses métodos são recomendados para confirmar diagnóstico e acompanhar tratamento quando indicados.\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Conceitos essenciais**\n\nA pressão arterial (PA) expressa a pressão exercida pelo sangue sobre a parede arterial. A pressão arterial sistólica (PAS) corresponde ao valor mais alto do ciclo cardíaco e a pressão arterial diastólica (PAD), ao mais baixo. A hipertensão arterial (HA) é definida no documento como doença crônica não transmissível caracterizada por elevação persistente da PAS maior ou igual a 140 mmHg e/ou da PAD maior ou igual a 90 mmHg, medida com técnica correta em pelo menos duas ocasiões e na ausência de medicação anti-hipertensiva.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais.",
+      "trace_id": "3eb4d902-b682-46d2-9ae4-2d1b33165e78",
+      "seconds": 98.93
+    },
+    {
+      "id": "G12",
+      "question": "Segundo a base OXICOR, posso ajustar minha dose de insulina sozinho?",
+      "expected_route": "RAG",
+      "expected_groups": [
+        [
+          "não orientar",
+          "não deve ajustar",
+          "não autorizam",
+          "não deve indicar"
+        ],
+        [
+          "insulina",
+          "medicamento"
+        ],
+        [
+          "Fonte:"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "RAG",
+      "answer": "### Especialista RAG\nTrechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_03_DM2_RESUMO.md · Glicemia, HbA1c e interpretação**\n\nHipoglicemia é uma consideração de segurança especialmente relevante para pessoas que usam certos medicamentos ou insulina. Sintomas e condutas dependem do contexto clínico; um sistema educacional não deve ajustar doses ou substituir plano profissional.\n\n**Fonte: OXICOR_RAG_03_DM2_RESUMO.md · Limites para uso educacional**\n\n- Uma glicemia isolada não confirma nem exclui DM2.\n- A interpretação depende do tipo de coleta e de confirmação apropriada.\n- Não inferir sintomas, hábitos, doenças ou histórico não coletados.\n- Não prescrever dieta, exercício, monitorização ou medicamento.\n- Não orientar alteração de insulina ou antidiabéticos.\n- Metas de HbA1c e redução de peso são individualizadas.\n- Risco cardiorrenal e síndrome metabólica dependem do conjunto de dados disponíveis.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais.",
+      "trace_id": "ed2c6ba9-68ba-4894-8de0-fffa2a172c2f",
+      "seconds": 84.95
+    },
+    {
+      "id": "G13",
+      "question": "Segundo a base OXICOR, a HbA1c se relaciona a retinopatia e neuropatia no diabetes?",
+      "expected_route": "RAG",
+      "expected_groups": [
+        [
+          "HbA1c"
+        ],
+        [
+          "retinopatia"
+        ],
+        [
+          "neuropatia"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": 1.0,
+      "checks": [
+        true,
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "RAG",
+      "answer": "### Especialista RAG\nTrechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_03_DM2_RESUMO.md · Visão integrada do diabetes tipo 2**\n\nO controle glicêmico continua central. A hemoglobina glicada (HbA1c) representa exposição glicêmica ao longo do tempo e se relaciona ao risco de retinopatia, doença renal e neuropatia. Estudos citados mostram benefícios da redução sustentada da HbA1c, sobretudo quando o controle é alcançado precocemente. Metas, porém, não são universais: idade, funcionalidade, cognição, expectativa de vida, risco de hipoglicemia e outras condições exigem individualização.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais.",
+      "trace_id": "466ceb70-3b0c-4515-9f9f-5143b74f97a3",
+      "seconds": 86.59
+    },
+    {
+      "id": "G14",
+      "question": "Olá!",
+      "expected_route": "ORIENTAÇÃO",
+      "expected_groups": [
+        [
+          "OXICOR"
+        ],
+        [
+          "modelo de diabetes"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": null,
+      "checks": [
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "ORIENTAÇÃO",
+      "answer": "Posso consultar os dados do OXICOR, usar o modelo de diabetes com um perfil fictício e consultar a base científica cardiometabólica. Exemplos: **Quantos participantes há na base?** ou **Segundo a base OXICOR, qual a relação entre diabetes e risco cardiovascular?**",
+      "trace_id": "3d7ca27c-86d9-4d21-80fd-65cfa4d538b4",
+      "seconds": 0.06
+    },
+    {
+      "id": "G15",
+      "question": "Crie um poema sobre futebol.",
+      "expected_route": "CONTROLE DE USO",
+      "expected_groups": [
+        [
+          "somente ao OXICOR"
+        ],
+        [
+          "Nenhum agente foi acionado"
+        ]
+      ],
+      "relevance": 1.0,
+      "grounding": null,
+      "checks": [
+        true,
+        true
+      ],
+      "passed": true,
+      "route": "CONTROLE DE USO",
+      "answer": "Este assistente atende somente ao OXICOR e à saúde cardiometabólica. Reformule a pergunta nesse contexto. Nenhum agente foi acionado.",
+      "trace_id": "c55936ea-71e1-45ab-825d-476c4151732d",
+      "seconds": 0.04
+    }
+  ],
+  "updated_at": "2026-10-19T21:22:24.030285+00:00"
+}

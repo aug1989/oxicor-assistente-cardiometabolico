@@ -1,0 +1,98 @@
+{
+  "created_at": "2026-10-19T21:00:25.370330+00:00",
+  "dataset_name": "CDC Diabetes Health Indicators",
+  "source_url": "https://archive.ics.uci.edu/dataset/891/cdc+diabetes+health+indicators",
+  "dataset_sha256": "9f71fda9d4ae5f4878c99b9233b6a16accfa9a17c194116a6b78100540934964",
+  "records": 253680,
+  "positive_records": 35346,
+  "target_col": "Diabetes_binary",
+  "feature_columns": [
+    "HighBP",
+    "HighChol",
+    "CholCheck",
+    "BMI",
+    "Smoker",
+    "Stroke",
+    "HeartDiseaseorAttack",
+    "PhysActivity",
+    "Fruits",
+    "Veggies",
+    "HvyAlcoholConsump",
+    "AnyHealthcare",
+    "NoDocbcCost",
+    "GenHlth",
+    "MentHlth",
+    "PhysHlth",
+    "DiffWalk",
+    "Sex",
+    "Age"
+  ],
+  "drop_columns": [
+    "ID",
+    "Diabetes_binary",
+    "Education",
+    "Income"
+  ],
+  "best_estimator_name": "HistGradientBoostingClassifier",
+  "threshold": 0.13,
+  "threshold_rule": "Maior precision entre limiares 0.05..0.50 com recall >=0.80 na validação; passo 0.01.",
+  "validation_precision": 0.2990378537818667,
+  "validation_recall": 0.8138379204892966,
+  "split_method": "GroupShuffleSplit por hash do perfil sem ID, alvo, Education e Income; sementes 42 e 43.",
+  "split_counts": {
+    "train": 177303,
+    "validation": 38500,
+    "test": 37877
+  },
+  "split_positive_counts": {
+    "train": 24841,
+    "validation": 5232,
+    "test": 5273
+  },
+  "metrics": {
+    "accuracy": 0.7055205005676268,
+    "precision": 0.29547193433957014,
+    "recall": 0.8056135027498578,
+    "f1": 0.43236641221374045,
+    "roc_auc": 0.8259085289064227
+  },
+  "confusion_matrix": [
+    [
+      22475,
+      10129
+    ],
+    [
+      1025,
+      4248
+    ]
+  ],
+  "sklearn_version": "1.7.2",
+  "model_parameters": {
+    "categorical_features": "from_dtype",
+    "class_weight": null,
+    "early_stopping": false,
+    "interaction_cst": null,
+    "l2_regularization": 1.0,
+    "learning_rate": 0.08,
+    "loss": "log_loss",
+    "max_bins": 255,
+    "max_depth": null,
+    "max_features": 1.0,
+    "max_iter": 120,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 20,
+    "monotonic_cst": null,
+    "n_iter_no_change": 10,
+    "random_state": 42,
+    "scoring": "loss",
+    "tol": 1e-07,
+    "validation_fraction": 0.1,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "limitations": [
+    "Classificação do alvo observado, sem horizonte de previsão futura.",
+    "Dados de inquérito dos EUA; sem validação externa ou calibração para a população brasileira.",
+    "Limiar educacional privilegia sensibilidade; não é um limiar clínico."
+  ]
+}
