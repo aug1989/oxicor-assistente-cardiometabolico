@@ -1,0 +1,55 @@
+{
+  "execution_started_at_utc": "2026-11-09T01:28:10.409311+00:00",
+  "trace_id": "c2c72fec-de11-4fd9-93d5-feef09175899",
+  "status": "concluído",
+  "duration_seconds": 122.906,
+  "case_id": "G11",
+  "question": "Segundo a base OXICOR, como preparar a medida da pressão arterial?",
+  "expected_route": "RAG",
+  "actual_route": "RAG",
+  "route_passed": true,
+  "expected_groups": [
+    [
+      "medida",
+      "medição"
+    ],
+    [
+      "repouso",
+      "preparo",
+      "preparação"
+    ],
+    [
+      "Fonte:"
+    ]
+  ],
+  "group_checks": [
+    {
+      "group": [
+        "medida",
+        "medição"
+      ],
+      "passed": true
+    },
+    {
+      "group": [
+        "repouso",
+        "preparo",
+        "preparação"
+      ],
+      "passed": true
+    },
+    {
+      "group": [
+        "Fonte:"
+      ],
+      "passed": true
+    }
+  ],
+  "relevance": 1.0,
+  "grounding": 1.0,
+  "passed": true,
+  "retrieval_context": [
+    "Trechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Medida adequada**\n\nA qualidade da aferição é indispensável. A diretriz favorece equipamento automático de braço validado, com manguito adequado à circunferência do braço e verificação periódica da calibração. A pessoa deve permanecer em ambiente tranquilo, em repouso, sentada, com costas e pés apoiados, pernas descruzadas, braço apoiado na altura do coração e sem falar durante a medida. Bexiga cheia, exercício, cafeína, álcool e tabagismo próximos da aferição podem interferir no resultado.\n\nÉ apropriado obter mais de uma leitura, respeitando intervalo entre elas, e registrar valores e circunstâncias. A monitorização residencial da pressão arterial (MRPA) e a monitorização ambulatorial da pressão arterial (MAPA) ampliam a avaliação porque registram a PA fora do consultório. Esses métodos são recomendados para confirmar diagnóstico e acompanhar tratamento quando indicados.\n\nO efeito do avental branco corresponde a valores mais elevados no consultório que fora dele; o efeito de mascaramento corresponde ao padrão inverso. Essas diferenças não devem ser presumidas a partir de uma leitura: dependem de comparação estruturada entre medidas de consultório e fora dele.\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Conceitos essenciais**\n\nA pressão arterial (PA) expressa a pressão exercida pelo sangue sobre a parede arterial. A pressão arterial sistólica (PAS) corresponde ao valor mais alto do ciclo cardíaco e a pressão arterial diastólica (PAD), ao mais baixo. A hipertensão arterial (HA) é definida no documento como doença crônica não transmissível caracterizada por elevação persistente da PAS maior ou igual a 140 mmHg e/ou da PAD maior ou igual a 90 mmHg, medida com técnica correta em pelo menos duas ocasiões e na ausência de medicação anti-hipertensiva.\n\nPersistência e repetição são, portanto, componentes da definição. Uma medida isolada elevada não basta para confirmar hipertensão. A PA varia e pode ser influenciada pelo ambiente, estado emocional, atividade recente, técnica, equipamento e condições clínicas. Medidas fora do consultório ajudam a confirmar padrões e distinguir diferenças entre ambientes.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais."
+  ],
+  "answer": "### Especialista RAG\nTrechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Medida adequada**\n\nA qualidade da aferição é indispensável. A diretriz favorece equipamento automático de braço validado, com manguito adequado à circunferência do braço e verificação periódica da calibração. A pessoa deve permanecer em ambiente tranquilo, em repouso, sentada, com costas e pés apoiados, pernas descruzadas, braço apoiado na altura do coração e sem falar durante a medida. Bexiga cheia, exercício, cafeína, álcool e tabagismo próximos da aferição podem interferir no resultado.\n\nÉ apropriado obter mais de uma leitura, respeitando intervalo entre elas, e registrar valores e circunstâncias. A monitorização residencial da pressão arterial (MRPA) e a monitorização ambulatorial da pressão arterial (MAPA) ampliam a avaliação porque registram a PA fora do consultório. Esses métodos são recomendados para confirmar diagnóstico e acompanhar tratamento quando indicados.\n\nO efeito do avental branco corresponde a valores mais elevados no consultório que fora dele; o efeito de mascaramento corresponde ao padrão inverso. Essas diferenças não devem ser presumidas a partir de uma leitura: dependem de comparação estruturada entre medidas de consultório e fora dele.\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Conceitos essenciais**\n\nA pressão arterial (PA) expressa a pressão exercida pelo sangue sobre a parede arterial. A pressão arterial sistólica (PAS) corresponde ao valor mais alto do ciclo cardíaco e a pressão arterial diastólica (PAD), ao mais baixo. A hipertensão arterial (HA) é definida no documento como doença crônica não transmissível caracterizada por elevação persistente da PAS maior ou igual a 140 mmHg e/ou da PAD maior ou igual a 90 mmHg, medida com técnica correta em pelo menos duas ocasiões e na ausência de medicação anti-hipertensiva.\n\nPersistência e repetição são, portanto, componentes da definição. Uma medida isolada elevada não basta para confirmar hipertensão. A PA varia e pode ser influenciada pelo ambiente, estado emocional, atividade recente, técnica, equipamento e condições clínicas. Medidas fora do consultório ajudam a confirmar padrões e distinguir diferenças entre ambientes.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais."
+}

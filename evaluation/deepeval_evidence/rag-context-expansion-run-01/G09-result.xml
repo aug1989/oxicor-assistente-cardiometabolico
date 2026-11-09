@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="85.985" timestamp="2026-11-09T01:33:04.751898+00:00" hostname="1f528d5ebec0"><testcase classname="evaluation.test_deepeval" name="test_golden_case_through_real_app[G09]" time="83.527" /></testsuite></testsuites>

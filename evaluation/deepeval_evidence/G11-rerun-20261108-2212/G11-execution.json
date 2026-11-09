@@ -1,0 +1,55 @@
+{
+  "execution_started_at_utc": "2026-11-09T01:12:35.156578+00:00",
+  "trace_id": "d7863ce0-4cee-49a3-a41f-5e7df7c25f64",
+  "status": "concluído",
+  "duration_seconds": 85.42,
+  "case_id": "G11",
+  "question": "Segundo a base OXICOR, como preparar a medida da pressão arterial?",
+  "expected_route": "RAG",
+  "actual_route": "RAG",
+  "route_passed": true,
+  "expected_groups": [
+    [
+      "medida",
+      "medição"
+    ],
+    [
+      "repouso",
+      "preparo",
+      "preparação"
+    ],
+    [
+      "Fonte:"
+    ]
+  ],
+  "group_checks": [
+    {
+      "group": [
+        "medida",
+        "medição"
+      ],
+      "passed": true
+    },
+    {
+      "group": [
+        "repouso",
+        "preparo",
+        "preparação"
+      ],
+      "passed": false
+    },
+    {
+      "group": [
+        "Fonte:"
+      ],
+      "passed": true
+    }
+  ],
+  "relevance": 0.6666666666666666,
+  "grounding": 1.0,
+  "passed": false,
+  "retrieval_context": [
+    "Trechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Medida adequada**\n\nÉ apropriado obter mais de uma leitura, respeitando intervalo entre elas, e registrar valores e circunstâncias. A monitorização residencial da pressão arterial (MRPA) e a monitorização ambulatorial da pressão arterial (MAPA) ampliam a avaliação porque registram a PA fora do consultório. Esses métodos são recomendados para confirmar diagnóstico e acompanhar tratamento quando indicados.\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Conceitos essenciais**\n\nA pressão arterial (PA) expressa a pressão exercida pelo sangue sobre a parede arterial. A pressão arterial sistólica (PAS) corresponde ao valor mais alto do ciclo cardíaco e a pressão arterial diastólica (PAD), ao mais baixo. A hipertensão arterial (HA) é definida no documento como doença crônica não transmissível caracterizada por elevação persistente da PAS maior ou igual a 140 mmHg e/ou da PAD maior ou igual a 90 mmHg, medida com técnica correta em pelo menos duas ocasiões e na ausência de medicação anti-hipertensiva.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais."
+  ],
+  "answer": "### Especialista RAG\nTrechos recuperados dos resumos educacionais locais OXICOR:\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Medida adequada**\n\nÉ apropriado obter mais de uma leitura, respeitando intervalo entre elas, e registrar valores e circunstâncias. A monitorização residencial da pressão arterial (MRPA) e a monitorização ambulatorial da pressão arterial (MAPA) ampliam a avaliação porque registram a PA fora do consultório. Esses métodos são recomendados para confirmar diagnóstico e acompanhar tratamento quando indicados.\n\n**Fonte: OXICOR_RAG_01_HIPERTENSAO_RESUMO.md · Conceitos essenciais**\n\nA pressão arterial (PA) expressa a pressão exercida pelo sangue sobre a parede arterial. A pressão arterial sistólica (PAS) corresponde ao valor mais alto do ciclo cardíaco e a pressão arterial diastólica (PAD), ao mais baixo. A hipertensão arterial (HA) é definida no documento como doença crônica não transmissível caracterizada por elevação persistente da PAS maior ou igual a 140 mmHg e/ou da PAD maior ou igual a 90 mmHg, medida com técnica correta em pelo menos duas ocasiões e na ausência de medicação anti-hipertensiva.\n\nConteúdo educacional. Não substitui avaliação profissional. As referências declaradas nos resumos devem ser conferidas nos documentos originais."
+}

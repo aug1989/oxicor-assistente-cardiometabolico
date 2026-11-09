@@ -16,7 +16,7 @@ Chat Streamlit
   -> especialista(s) CrewAI + ferramenta restrita
        Dados: consultas fixas DuckDB
        ML: classificação por modelo salvo
-       RAG: TF-IDF e trechos dos resumos locais
+       RAG: TF-IDF por parágrafo, com contexto dos vizinhos na mesma seção
        Genérico: orientação sobre o sistema, sem ferramentas
   -> condensador CrewAI: ordena blocos verificados
   -> resposta Markdown e eventos no histórico
@@ -60,7 +60,7 @@ O limiar é 0,13. A baixa precisão resulta em muitos falsos positivos. A escolh
 
 ## Observabilidade e avaliação
 
-As áreas **Observabilidade** e **Avaliação** ficam no menu do Streamlit. A primeira registra ID, horários UTC, duração, status, rota, ferramentas, respostas verificadas e tokens quando disponíveis. A segunda lê os resultados persistidos da suíte. O fluxo também exporta traces reais para Langfuse Cloud por OTLP/HTTP, incluindo ferramentas, gerações Ollama, duração e tokens. A avaliação permanece uma implementação equivalente local com critérios determinísticos, sem DeepEval.
+As áreas **Observabilidade** e **Avaliação** ficam no menu do Streamlit. A primeira registra ID, horários UTC, duração, status, rota, ferramentas, respostas verificadas e tokens quando disponíveis. A segunda lê os resultados persistidos da avaliação legada. O fluxo também exporta traces reais para Langfuse Cloud por OTLP/HTTP, incluindo ferramentas, gerações Ollama, duração e tokens. A avaliação legada mantém seus critérios determinísticos; a suíte DeepEval é separada e reutiliza esses mesmos critérios.
 
 ```sh
 docker compose exec chat python evaluate_golden.py
@@ -68,6 +68,22 @@ docker compose exec -e OMP_NUM_THREADS=2 chat python run_tests.py
 ```
 
 A avaliação chama o fluxo real com as 15 perguntas de `evaluation/golden.json`. Mantém os limites globais de uso. Relevância mede cobertura dos grupos de termos esperados; grounding mede preservação integral das evidências; aprovação exige também a rota correta. São proxies determinísticos de regressão, não julgamento semântico completo. Casos sem ferramenta têm grounding não aplicável. A preservação é favorecida pelas restrições arquiteturais e não demonstra capacidade irrestrita do LLM.
+
+O DeepEval foi integrado como uma suíte separada em `evaluation/test_deepeval.py`. Ela usa os mesmos casos e chama `run_multi_agent` com a recuperação local real; a métrica customizada reutiliza `evaluate()` sem mudar critérios, resultados ou artefatos da avaliação acima. A métrica é determinística, portanto não chama um juiz LLM, não requer `OPENAI_API_KEY` nem login no Confident AI. Os casos são executados em série, respeitando o intervalo de uso. A telemetria do DeepEval fica desativada e seu autoload de arquivos `.env` é desabilitado pelo Compose.
+
+Após construir a imagem, execute os testes em um container temporário como o usuário padrão do serviço. O diretório de trabalho fica no volume persistente `/app/data`, que é gravável sem privilégios de administrador; cache, configurações e arquivos de execução do DeepEval permanecem em `/app/data/evaluation/deepeval`. `docker compose run` não publica a porta do Streamlit e não exige iniciar o aplicativo:
+
+```sh
+docker compose -p oxicor-clone run --rm --no-deps -T chat sh -c 'mkdir -p /app/data/evaluation/deepeval && cd /app/data/evaluation/deepeval && PYTHONPATH=/app deepeval test run /app/evaluation/test_deepeval.py'
+```
+
+Para o primeiro teste real, execute somente o caso `G01` com o seletor pytest `-k G01`:
+
+```sh
+docker compose -p oxicor-clone run --rm --no-deps -T chat sh -c 'mkdir -p /app/data/evaluation/deepeval && cd /app/data/evaluation/deepeval && PYTHONPATH=/app pytest -q -p no:cacheprovider -k G01 /app/evaluation/test_deepeval.py'
+```
+
+Esse comando faz uma chamada real ao fluxo do aplicativo usando o modelo de respostas indicado por `CREWAI_LLM` e `CREWAI_BASE_URL`; com a configuração local atual, usa `qwen3:4b-instruct-oxicor-cpu` no Ollama e não requer credencial de serviço pago. O caso consome os limites de uso normais. O avaliador não usa Flowise: as consultas RAG usam o corpus local. Não coloque `.env` no Git.
 
 Resultados ficam em `/app/data/evaluation/`. Os testes técnicos cobrem limites de uso, roteamento, ferramentas, preservação de evidências, observabilidade e predição. As perguntas reais e os testes técnicos são conjuntos diferentes.
 
