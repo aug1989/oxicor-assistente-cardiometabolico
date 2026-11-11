@@ -7,6 +7,8 @@ import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
 
+from privacy import redact_text
+
 class PolicyDenied(Exception):
     pass
 
@@ -56,6 +58,7 @@ def request_slot():
 
 def guarded_request(function):
     def wrapped(question, *args, **kwargs):
+        question = redact_text(question)
         try:
             reply = scope_reply(question)
             if reply is not None:

@@ -8,13 +8,19 @@ import uuid
 from datetime import datetime
 import requests
 
+from privacy import redact_value
+
 def configured():
-    return bool(os.getenv('LANGFUSE_PUBLIC_KEY') and os.getenv('LANGFUSE_SECRET_KEY'))
+    enabled = os.getenv('OXICOR_LANGFUSE_ENABLED', '').strip().lower() in {
+        '1', 'true', 'yes', 'on',
+    }
+    return enabled and bool(os.getenv('LANGFUSE_PUBLIC_KEY') and os.getenv('LANGFUSE_SECRET_KEY'))
 
 def attributes(values):
     return [{'key':key,'value':{'stringValue':value if isinstance(value,str) else json.dumps(value,ensure_ascii=False)}} for key,value in values.items() if value is not None]
 
 def payload(trace):
+    trace = redact_value(trace)
     trace_id = uuid.UUID(trace['id']).hex
     root_id = uuid.uuid5(uuid.UUID(trace['id']),'root').hex[:16]
     start = int(datetime.fromisoformat(trace['started_at']).timestamp()*1_000_000_000)

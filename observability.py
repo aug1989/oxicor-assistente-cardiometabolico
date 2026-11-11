@@ -9,6 +9,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime, timezone
 
+from privacy import redact_text, redact_value
+
 @contextmanager
 def database():
     path = Path(os.getenv('OXICOR_TRACE_DB', '/app/data/observability.sqlite3'))
@@ -26,23 +28,26 @@ def database():
 def observed_request(function):
     @wraps(function)
     def wrapped(question, *args, **kwargs):
+        question = redact_text(question)
         trace_id = str(uuid.uuid4())
         started = datetime.now(timezone.utc).isoformat()
         timer = time.monotonic()
         events = []
         callback = kwargs.get('on_event')
         def on_event(event):
-            events.append(dict(event, elapsed_seconds=round(time.monotonic()-timer, 3)))
+            safe_event = redact_value(dict(event, elapsed_seconds=round(time.monotonic()-timer, 3)))
+            events.append(safe_event)
             with database() as db:
                 db.execute('UPDATE traces SET events=?,duration=? WHERE id=?', (json.dumps(events, ensure_ascii=False), time.monotonic()-timer, trace_id))
             if callback:
-                callback(event)
+                callback(safe_event)
         kwargs['on_event'] = on_event
         with database() as db:
             db.execute('INSERT INTO traces VALUES (?,?,?,?,?,?,?,?,?)', (trace_id, started, question, 'executando', 0, '', '', '[]', None))
         status, result, error = 'erro', {}, None
         try:
             result = function(question, *args, **kwargs)
+            result = redact_value(result)
             status = 'controle' if result.get('route') in ('CONTROLE DE USO', 'ORIENTAÇÃO') else 'concluído'
             result['trace_id'] = trace_id
             return result
@@ -51,11 +56,12 @@ def observed_request(function):
             raise
         finally:
             with database() as db:
-                db.execute('UPDATE traces SET status=?,duration=?,route=?,answer=?,events=?,error_type=? WHERE id=?', (status, time.monotonic()-timer, result.get('route', ''), result.get('answer', ''), json.dumps(events, ensure_ascii=False), error, trace_id))
+                safe_result = redact_value(result)
+                db.execute('UPDATE traces SET status=?,duration=?,route=?,answer=?,events=?,error_type=? WHERE id=?', (status, time.monotonic()-timer, safe_result.get('route', ''), safe_result.get('answer', ''), json.dumps(events, ensure_ascii=False), error, trace_id))
             # Só o fluxo atual é exportado; não enviar históricos antigos automaticamente.
             try:
                 from langfuse_export import export_trace
-                outcome=export_trace(dict(id=trace_id,started_at=started,question=question,status=status,duration=time.monotonic()-timer,route=result.get('route',''),answer=result.get('answer',''),events=events))
+                outcome=export_trace(dict(id=trace_id,started_at=started,question=question,status=status,duration=time.monotonic()-timer,route=safe_result.get('route',''),answer=safe_result.get('answer',''),events=events))
                 with database() as db:
                     db.execute('INSERT OR REPLACE INTO langfuse_exports VALUES (?,?,?)',(trace_id,outcome['state'],outcome['http_status']))
             except Exception:
@@ -66,7 +72,7 @@ def observed_request(function):
 def read_traces(limit=100):
     with database() as db:
         rows = db.execute('SELECT * FROM traces ORDER BY started_at DESC LIMIT ?', (limit,)).fetchall()
-    return [dict(row, events=json.loads(row['events'])) for row in rows]
+    return [redact_value(dict(row, events=json.loads(row['events']))) for row in rows]
 
 def render_observability():
     import streamlit as st

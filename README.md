@@ -67,6 +67,15 @@ docker compose exec chat python evaluate_golden.py
 docker compose exec -e OMP_NUM_THREADS=2 chat python run_tests.py
 ```
 
+O `run_tests.py` executa a suíte geral de regressão; não é uma suíte apenas de segurança. Para executar a seleção focalizada de segurança em uma imagem que contenha `pytest`, use no PowerShell, na raiz do repositório:
+
+```powershell
+$repo = (Get-Location).Path
+docker run --rm --network none --mount "type=bind,source=$repo,target=/work,readonly" -w /work -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPATH=/work --entrypoint python oxicor-clone-chat:latest -m pytest -q -ra tests/test_privacy_controls.py tests/test_langfuse_export.py tests/test_usage_policy.py tests/test_multi_agents.py::DuckDBTests::test_no_user_sql tests/test_delivery.py::DeliveryTests::test_trace_records_failure_without_exception_message
+```
+
+O comando não monta `.env`, desabilita a rede e usa testes com dados fictícios e bancos temporários. O resultado manual informado para a imagem `oxicor-clone-chat:latest` foi `26 passed in 3.41s`; não foi reexecutado nesta atualização da documentação. A tentativa equivalente com `streamlit-flowise-chat-chat:latest` não pôde iniciar porque essa imagem não contém `pytest`. Essa contagem focalizada não deve ser confundida com os 43 testes da descoberta geral com `unittest`. Consulte [as evidências de segurança](./evaluation/security_evidence/CONTROLES_LLM_2026-11-09.md) para a origem das contagens, os limites e a distinção em relação à validação ponta a ponta da interface.
+
 A avaliação chama o fluxo real com as 15 perguntas de `evaluation/golden.json`. Mantém os limites globais de uso. Relevância mede cobertura dos grupos de termos esperados; grounding mede preservação integral das evidências; aprovação exige também a rota correta. São proxies determinísticos de regressão, não julgamento semântico completo. Casos sem ferramenta têm grounding não aplicável. A preservação é favorecida pelas restrições arquiteturais e não demonstra capacidade irrestrita do LLM.
 
 O DeepEval foi integrado como uma suíte separada em `evaluation/test_deepeval.py`. Ela usa os mesmos casos e chama `run_multi_agent` com a recuperação local real; a métrica customizada reutiliza `evaluate()` sem mudar critérios, resultados ou artefatos da avaliação acima. A métrica é determinística, portanto não chama um juiz LLM, não requer `OPENAI_API_KEY` nem login no Confident AI. Os casos são executados em série, respeitando o intervalo de uso. A telemetria do DeepEval fica desativada e seu autoload de arquivos `.env` é desabilitado pelo Compose.
@@ -91,7 +100,7 @@ Resultados ficam em `/app/data/evaluation/`. Os testes técnicos cobrem limites 
 
 Uma solicitação por vez, intervalo de 15 segundos, 30 solicitações por hora, 100 em 24 horas e até 3.000 caracteres. Os limites são compartilhados entre usuários; falhas admitidas também consomem quota. O filtro lexical de escopo é uma primeira barreira e não impede toda tentativa de desvio. Ollama local não cobra tarifa de API; energia e hardware não estão contabilizados.
 
-O histórico é local e compartilhado entre abas. Esta versão não possui autenticação por usuário e não deve ser exposta publicamente para dados reais de saúde. Publicação e proteção completa pertencem à etapa 3. Os resumos RAG têm referências declaradas que ainda requerem conferência nos documentos originais.
+O histórico é local e compartilhado entre abas. Esta versão não possui autenticação por usuário e não deve ser exposta publicamente para dados reais de saúde. A aplicação mascara formatos comuns de identificadores antes do envio, exibição, histórico novo e traces; isso é uma mitigação de melhor esforço, não anonimização garantida. Nomes ou dados identificáveis descritos livremente podem não ser detectados. O parâmetro `OXICOR_RETENTION_DAYS` fica vazio por padrão; um administrador pode configurá-lo após definir a política de retenção. Nenhum prazo é definido pelo projeto. Quando configurada, a limpeza automática aplica-se a conversas locais sem atividade e traces locais expirados na inicialização do chat; não apaga dados no Langfuse. Os históricos existentes não são migrados nem limpos durante esta atualização, pois a configuração está vazia. As respostas Markdown continuam renderizadas sem HTML bruto (`unsafe_allow_html=False`), mas links externos ainda podem ser enganosos. Os resumos RAG têm referências declaradas que ainda requerem conferência nos documentos originais.
 
 ## Entrega
 
@@ -99,14 +108,15 @@ O histórico é local e compartilhado entre abas. Esta versão não possui auten
 - `docs/ROTEIRO_VIDEO.md`: roteiro para demonstração de 3 a 5 minutos.
 - `docs/ARQUITETURA_AGENTES.md`: papéis e ferramentas.
 - `evaluation/`: golden dataset, resultados de execução e evidências selecionadas.
+- `evaluation/security_evidence/`: cenários e resultados dos controles de privacidade adicionados.
 - `tests/`: testes técnicos.
 
 Nenhuma credencial `.env`, histórico de conversas ou banco de uso deve ser versionado. Os CSVs pequenos de triagem e participantes são os exemplos de teste já presentes na etapa 1.
 
 ### Langfuse
 
-Preencha `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` e `LANGFUSE_BASE_URL` no `.env` local, usando `.env.example` como referência. Nunca versione o `.env`. Recrie o container após alterar o ambiente. A exportação usa HTTPS e a autenticação oficial do Langfuse; falhas não interrompem o chat. O painel local mostra o resultado do envio.
+Preencha `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` e `LANGFUSE_BASE_URL` no `.env` local e defina `OXICOR_LANGFUSE_ENABLED=true` somente se a organização optar por habilitar essa integração. A integração fica desativada por padrão, mesmo que as chaves estejam presentes. Nunca versione o `.env`. Recrie o container após alterar o ambiente. A exportação só é tentada quando a habilitação explícita, as duas chaves e o endpoint HTTPS estão presentes; falhas não interrompem o chat. Langfuse pode estar hospedado localmente, em rede privada ou em serviço remoto; confirme a topologia e a política do destino antes de habilitá-lo.
 
-Cada pergunta nova envia seu texto e a resposta ao projeto configurado: use apenas dados fictícios na demonstração. O registro inclui a resposta verificada da aplicação, não o raciocínio interno do modelo. Os tokens de chamadas sucessivas são separados para evitar dupla contagem do acumulado CrewAI. A tarifa zero indica somente a API Ollama local; não inclui infraestrutura.
+Quando habilitada, a exportação inclui pergunta, resposta e eventos do trace após mascaramento dos formatos de identificadores reconhecidos pela aplicação. O mascaramento é uma mitigação de melhor esforço: não garante anonimização e não detecta todo dado pessoal em texto livre. O registro inclui a resposta verificada da aplicação, não o raciocínio interno do modelo. Os tokens de chamadas sucessivas são separados para evitar dupla contagem do acumulado CrewAI. A tarifa zero indica somente a API Ollama local; não inclui infraestrutura. Não ative a integração com dados reais sem revisar payload, destino, acesso e retenção.
 
 As evidências Langfuse acompanham o relatório entregue separadamente; traces e capturas não são publicados no repositório. Cinco consultas reais incluem uma solicitação composta de DuckDB e RAG. Os testes de unidade devem ser executados com `LANGFUSE_PUBLIC_KEY` e `LANGFUSE_SECRET_KEY` vazios, evitando exportar registros simulados.

@@ -9,6 +9,15 @@ from urllib.parse import urlparse
 import requests
 import streamlit as st
 
+from privacy import (
+    prepare_flowise_payload,
+    prepare_user_message,
+    redact_stream,
+    redact_text,
+    redact_value,
+)
+from retention import cleanup_expired_records, configured_retention_days
+
 DB_PATH = Path(os.environ.get('CHAT_HISTORY_DB', '/app/data/history.sqlite3'))
 
 
@@ -173,12 +182,11 @@ def visible_answer(text):
 
 
 def flowise_tokens(question, chat, message):
+    question = redact_text(question)
     headers = {'Authorization': f'Bearer {API_KEY}'} if API_KEY else {}
     with requests.post(
         API_URL, headers=headers,
-        json={'question': question, 'streaming': True,
-              'chatId': chat['session_id'],
-              'overrideConfig': {'sessionId': chat['session_id']}},
+        json=prepare_flowise_payload(question, chat['session_id']),
         stream=True, timeout=(10, 180),
     ) as response:
         response.raise_for_status()
@@ -188,7 +196,7 @@ def flowise_tokens(question, chat, message):
             if not isinstance(answer, str) or not answer.strip():
                 raise ValueError('Resposta sem texto')
             message['mode'] = 'integral'
-            answer = visible_answer(answer)
+            answer = redact_text(visible_answer(answer))
             if not answer.strip():
                 raise ValueError('Resposta final ausente')
             message['content'] = answer
@@ -197,12 +205,12 @@ def flowise_tokens(question, chat, message):
         message['mode'] = 'SSE'
         ended = False
         presentation = PresentationFilter()
+        buffered = []
         for event, data in sse_events(response):
             if event == 'token' and isinstance(data, str):
                 visible = presentation.feed(data)
                 if visible:
-                    message['content'] += visible
-                    yield visible
+                    buffered.append(visible)
             elif event in ('error', 'abort'):
                 raise ValueError('Fluxo interrompido')
             elif event == 'end':
@@ -211,10 +219,14 @@ def flowise_tokens(question, chat, message):
             # Eventos de thinking e metadados não são exibidos como resposta.
         tail = presentation.feed('', final=True)
         if tail:
-            message['content'] += tail
-            yield tail
-        if not ended or not message['content'].strip():
+            buffered.append(tail)
+        if not ended:
             raise ValueError('Stream incompleto ou vazio')
+        answer = redact_stream(buffered)
+        if not answer.strip():
+            raise ValueError('Stream incompleto ou vazio')
+        message['content'] = answer
+        yield answer
 
 
 st.set_page_config(page_title='OXICOR · Chat, Relatórios e ML', page_icon='💬')
@@ -241,6 +253,13 @@ API_KEY = os.environ.get('FLOWISE_API_KEY', '').strip()
 parsed_url = urlparse(API_URL)
 url_valid = parsed_url.scheme in ('http', 'https') and bool(parsed_url.netloc)
 if 'chats' not in st.session_state:
+    retention_days = configured_retention_days()
+    if retention_days is not None:
+        cleanup_expired_records(
+            DB_PATH,
+            Path(os.getenv('OXICOR_TRACE_DB', '/app/data/observability.sqlite3')),
+            retention_days,
+        )
     st.session_state.chats, st.session_state.active_chat_id = load_history()
     if not st.session_state.chats:
         new_chat()
@@ -259,7 +278,7 @@ with st.sidebar:
     st.header('Conversas')
     st.button('Nova conversa', on_click=new_chat, use_container_width=True)
     for cid, item in reversed(list(st.session_state.chats.items())):
-        st.button(item['title'], key=f'chat_{cid}', on_click=select_chat,
+        st.button(redact_text(item['title']), key=f'chat_{cid}', on_click=select_chat,
                   args=(cid,), use_container_width=True,
                   type='primary' if cid == st.session_state.active_chat_id else 'secondary')
     st.caption('Histórico local compartilhado entre as abas deste aplicativo, preservado após atualizar a página.')
@@ -271,7 +290,7 @@ chat = st.session_state.chats[st.session_state.active_chat_id]
 for message in chat['messages']:
     with st.chat_message(message['role']):
         st.markdown(
-            visible_answer(message['content']) if message['role'] == 'assistant' else message['content'],
+            redact_text(visible_answer(message['content'])) if message['role'] == 'assistant' else redact_text(message['content']),
             unsafe_allow_html=False,
         )
         if message.get('error'):
@@ -282,12 +301,14 @@ for message in chat['messages']:
             with st.expander('Ver handoffs e respostas dos agentes'):
                 for step in message['agent_trace']:
                     st.markdown(f"**{step['agent']}**", unsafe_allow_html=False)
-                    st.markdown(step['content'], unsafe_allow_html=False)
+                    st.markdown(redact_text(step['content']), unsafe_allow_html=False)
 
 if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
+    user_message = prepare_user_message(question, now())
+    question = user_message['content']
     if not chat['messages']:
         chat['title'] = question[:40] + ('…' if len(question) > 40 else '')
-    chat['messages'].append({'role': 'user', 'content': question, 'created_at': now()})
+    chat['messages'].append(user_message)
     with st.chat_message('user'):
         st.markdown(question)
     answer = {'role': 'assistant', 'content': '', 'created_at': now(), 'pending': True}
@@ -298,9 +319,14 @@ if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
             from multi_agents import run_multi_agent
 
             def consult_rag(prompt):
-                if os.getenv('OXICOR_RAG_BACKEND', 'local') == 'local':
+                backend = os.getenv('OXICOR_RAG_BACKEND', 'local').strip().lower()
+                if backend == 'local':
                     from local_rag import consult_local
                     return consult_local(prompt)
+                if backend != 'flowise':
+                    raise ValueError('OXICOR_RAG_BACKEND deve ser local ou flowise.')
+                if not url_valid:
+                    raise ValueError('FLOWISE_API_URL não configurada ou inválida.')
                 tool_message = {'content': '', 'mode': None}
                 return ''.join(flowise_tokens(prompt, chat, tool_message))
 
@@ -309,7 +335,8 @@ if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
 
             def show_event(event):
                 safe = dict(event)
-                safe['content'] = visible_answer(event['content'])
+                safe['content'] = redact_text(visible_answer(event['content']))
+                safe = redact_value(safe)
                 answer.setdefault('agent_trace', []).append(safe)
                 save_chat(st.session_state.active_chat_id)
                 st.markdown(f"**{safe['agent']} · {safe.get('kind', 'resultado')}**")
@@ -317,10 +344,10 @@ if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
 
             with st.status('Iniciando orquestração CrewAI…', expanded=True) as progress:
                 result = run_multi_agent(question, consult_rag, on_stage=show_stage, on_event=show_event)
-                answer['content'] = visible_answer(result['answer'])
+                answer['content'] = redact_text(visible_answer(result['answer']))
                 answer['route'] = result['route']
                 answer['agent_trace'] = [
-                    {**step, 'content': visible_answer(step['content'])}
+                    {**step, 'content': redact_text(visible_answer(step['content']))}
                     for step in result['trace']
                 ]
                 answer['mode'] = 'crewai'
@@ -335,9 +362,9 @@ if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
             answer['error'] = ('Autenticação recusada. Confira a chave no .env.' if code in (401, 403)
                                else f'Flowise retornou HTTP {code}. Confira o fluxo e o endpoint.')
         except requests.Timeout:
-            answer['error'] = 'Tempo de espera excedido. A resposta parcial, se houver, foi preservada.'
+            answer['error'] = 'Tempo de espera excedido. O texto parcial não foi mantido.'
         except (requests.RequestException, ValueError):
-            answer['error'] = 'A resposta foi interrompida ou inválida. Confira o Flowise; o texto parcial foi preservado.'
+            answer['error'] = 'A resposta foi interrompida ou inválida. Confira o Flowise; o texto parcial não foi mantido.'
         except Exception:
             answer['error'] = 'Não foi possível concluir a orquestração. Confira o modelo CrewAI, o Ollama e as integrações configuradas.'
         finally:
