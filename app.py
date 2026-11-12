@@ -1,3 +1,6 @@
+import logging
+import traceback
+from pathlib import Path
 import json
 import re
 from urllib.parse import urlparse
@@ -307,7 +310,10 @@ if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
             answer['error'] = 'A resposta foi interrompida ou inválida. Confira o Flowise; o texto parcial não foi mantido.'
         except ChatConfigurationError:
             answer['error'] = 'Chat indisponível: configure CREWAI_BASE_URL e CREWAI_LLM com a credencial correspondente, ou OPENROUTER_MODEL e OPENROUTER_API_KEY.'
-        except Exception:
+        except Exception as exc:
+            frames = traceback.extract_tb(exc.__traceback__)
+            locations = ' > '.join(f'{Path(frame.filename).name}:{frame.lineno}:{frame.name}' for frame in frames)
+            logging.getLogger('oxicor').error('OXICOR_CHAT_FAILURE type=%s locations=%s', type(exc).__name__, locations)
             answer['error'] = 'Não foi possível concluir a orquestração. Confira a configuração do provedor de IA, seu saldo e seus limites de uso.'
         finally:
             answer['pending'] = False
