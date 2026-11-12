@@ -6,6 +6,8 @@ from natural_reports import interpret
 from reporting import (
     ReportsUnavailable, load_overview, latest_pressure, TOTAL_PARTICIPANTES,
     TOTAL_TRIAGENS, PRESSAO_ACIMA, RISCO, ULTIMA_PRESSAO, STATUS_SM,
+    DEMO_TOTAL_PARTICIPANTES, DEMO_TOTAL_TRIAGENS, DEMO_PRESSAO_ACIMA,
+    DEMO_RISCO, DEMO_ULTIMA_PRESSAO, DEMO_STATUS_SM, DEMO_ALERT_VALUES,
 )
 
 
@@ -39,20 +41,41 @@ def readable(frame):
 
 def render_reports():
     st.title('Relatórios OXICOR')
-    st.caption('Dados registrados no PostgreSQL. Consultas somente leitura; nenhuma classificação clínica é recalculada.')
+    st.caption('Consultas somente leitura. Nenhuma classificação clínica é recalculada.')
     st.button('Atualizar relatórios', key='refresh_reports')
     try:
         data = load_overview()
     except ReportsUnavailable as exc:
-        st.info(str(exc))
+        st.warning(str(exc))
         return
-    st.success('Conexão PostgreSQL confirmada (SELECT 1).')
+    if data['source'] == 'demo':
+        st.info('**Dados fictícios de demonstração** — origem: CSVs locais de participantes e triagens.')
+        queries = {
+            'participants': DEMO_TOTAL_PARTICIPANTES,
+            'triages': DEMO_TOTAL_TRIAGENS,
+            'pressure': DEMO_PRESSAO_ACIMA,
+            'risk': DEMO_RISCO,
+            'latest': DEMO_ULTIMA_PRESSAO,
+            'syndrome': DEMO_STATUS_SM,
+            'alerts': DEMO_ALERT_VALUES,
+        }
+    else:
+        st.success('Conexão PostgreSQL confirmada (SELECT 1).')
+        queries = {
+            'participants': TOTAL_PARTICIPANTES,
+            'triages': TOTAL_TRIAGENS,
+            'pressure': PRESSAO_ACIMA,
+            'risk': RISCO,
+            'latest': ULTIMA_PRESSAO,
+            'syndrome': STATUS_SM,
+            'alerts': 'SELECT alerta_critico, COUNT(*) AS total_triagens FROM triagens GROUP BY alerta_critico ORDER BY alerta_critico;',
+        }
     columns = st.columns(4)
     columns[0].metric('Participantes', data['participantes'])
     columns[1].metric('Participantes com PA acima', data['pressao_acima'])
     columns[2].metric('Triagens com alerta crítico', len(data['alertas']) if data['alertas_sql'] else 'Não disponível')
     columns[3].metric('Triagens registradas', data['triagens'])
-    st.caption('PA acima: participante com ao menos uma triagem com PAS ≥ 130 ou PAD ≥ 85 mmHg. Alertas e distribuições contam triagens, podendo incluir repetições do mesmo participante.')
+    st.caption('PA acima: participante com ao menos uma triagem com PAS ≥ 130 ou PAD ≥ 85 mmHg, critério operacional já usado no projeto; não é diagnóstico. Risco, síndrome metabólica e alerta são valores já registrados. Distribuições e alertas contam triagens, não participantes únicos.')
     st.subheader('Pergunte aos dados')
     st.caption('Consultas disponíveis: “Quantos participantes tiveram pressão acima da faixa esperada?” e “Qual foi a última pressão do participante ID?”. Use o ID cadastrado.')
     with st.form('natural_report'):
@@ -62,18 +85,18 @@ def render_reports():
         intent, identifier = interpret(question)
         if intent == 'pressure_count':
             st.success(f"{data['pressao_acima']} participante(s) tiveram ao menos uma triagem acima do critério operacional do relatório.")
-            show_sql(PRESSAO_ACIMA)
+            show_sql(queries['pressure'])
         elif intent == 'latest_pressure':
             if identifier not in data['pacientes']['paciente_id'].tolist():
                 st.info('Participante não encontrado. Confira o ID cadastrado no filtro abaixo.')
             else:
                 try:
-                    result = latest_pressure(identifier)
+                    result = latest_pressure(identifier, source=data['source'])
                     if result.empty:
                         st.info('Esse participante não tem triagem registrada.')
                     else:
                         st.dataframe(readable(result), hide_index=True, use_container_width=True)
-                    show_sql(ULTIMA_PRESSAO)
+                    show_sql(queries['latest'])
                 except ReportsUnavailable as exc:
                     st.warning(str(exc))
         else:
@@ -83,11 +106,11 @@ def render_reports():
 
     st.subheader('1. Total de participantes')
     st.dataframe(pd.DataFrame({'Total de participantes': [data['participantes']]}), hide_index=True)
-    show_sql(TOTAL_PARTICIPANTES)
+    show_sql(queries['participants'])
 
     st.subheader('2. Participantes com pressão acima da faixa esperada')
     st.dataframe(pd.DataFrame({'Participantes distintos': [data['pressao_acima']]}), hide_index=True)
-    show_sql(PRESSAO_ACIMA)
+    show_sql(queries['pressure'])
 
     st.subheader('3. Distribuição por risco')
     st.caption('Contagem de triagens por risco já registrado; não é contagem de participantes únicos.')
@@ -96,7 +119,7 @@ def render_reports():
         chart = data['risco'].copy()
         chart['risco'] = chart['risco'].fillna('Não informado')
         st.bar_chart(chart.set_index('risco')['total_triagens'])
-    show_sql(RISCO)
+    show_sql(queries['risk'])
 
     st.subheader('4. Última pressão registrada de um paciente')
     with st.form('latest_pressure_filter'):
@@ -105,14 +128,14 @@ def render_reports():
         submitted = st.form_submit_button('Consultar última pressão')
     if submitted and paciente_id is not None:
         try:
-            rows = latest_pressure(paciente_id)
+            rows = latest_pressure(paciente_id, source=data['source'])
             if rows.empty:
                 st.info('Esse participante não tem triagem registrada.')
             else:
                 st.dataframe(readable(rows), hide_index=True, use_container_width=True)
         except ReportsUnavailable as exc:
             st.warning(str(exc))
-    show_sql(ULTIMA_PRESSAO)
+    show_sql(queries['latest'])
     st.caption('O ID selecionado é passado como parâmetro, nunca concatenado ao SQL.')
 
     st.subheader('5. Triagens com alerta crítico')
@@ -135,10 +158,10 @@ def render_reports():
             selected = data['sindrome'][data['sindrome']['status_sindrome_metabolica'].isin(chosen)]
             st.metric('Triagens nos status selecionados', int(selected['total_triagens'].sum()))
             st.dataframe(readable(selected), hide_index=True)
-    show_sql(STATUS_SM)
+    show_sql(queries['syndrome'])
 
     with st.expander('Conferência dos dados existentes'):
         st.write(f"Participantes: {data['participantes']} · Triagens: {data['triagens']}")
         st.write('Valores reais de alerta_critico:')
         st.dataframe(data['valores_alerta'], hide_index=True)
-        st.code(TOTAL_TRIAGENS, language='sql')
+        st.code(queries['triages'], language='sql')

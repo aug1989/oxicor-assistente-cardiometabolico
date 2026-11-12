@@ -29,7 +29,7 @@ A configuração local por variáveis de ambiente e a configuração Cloud por `
 | `CREWAI_LLM` | Sim para o chat | Identificador/modelo aceito pelo adaptador CrewAI escolhido. |
 | `CREWAI_API_KEY` | Conforme o provedor | Credencial da API, se exigida. Ollama local usa o valor convencional configurado no `.env.example`; isso não torna o notebook acessível pela nuvem. |
 | `OXICOR_RAG_BACKEND` | Não | Padrão `local`, que consulta os Markdown do repositório. `flowise` exige configurar `FLOWISE_API_URL` e, se necessário, `FLOWISE_API_KEY`; é integração opcional. |
-| `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Não | Habilitam Relatórios. Aponte somente para PostgreSQL preparado com dados fictícios e permissões de leitura. Sem essa configuração, a página informa que o serviço não está disponível. |
+| `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Não | Se todos forem configurados, habilitam Relatórios via PostgreSQL; use somente base fictícia e permissões de leitura. Se nenhum for configurado, Relatórios usa o DuckDB local de demonstração. Configuração parcial é reportada como erro, sem fallback silencioso. |
 | `OXICOR_DATA_DIR` | Não | Diretório gravável dos arquivos transitórios. O padrão é `/tmp/oxicor` na hospedagem; no Docker local permanece `/app/data`. O armazenamento Community Cloud é efêmero. |
 | `OXICOR_DUCKDB_PATH` | Não | Substitui o caminho do banco DuckDB reconstruído dos CSVs de demonstração. |
 | `OXICOR_ADMIN_PAGES_ENABLED` | Não; padrão `false` | Expõe as páginas Observabilidade e Avaliação. Não habilite numa publicação pública sem autenticação e revisão de acesso. |
@@ -45,13 +45,15 @@ O modelo OpenRouter e sua chave ainda não estão configurados para o Community 
 - Conversas e IDs de sessão Flowise permanecem somente em `st.session_state`, isolados por sessão Streamlit. O app não carrega nem grava o histórico compartilhado SQLite anterior. Uma nova sessão ou reinicialização pode perder o histórico; não há garantia de persistência.
 - Os bancos, resultados de execução e arquivos de treinamento graváveis usam `OXICOR_DATA_DIR` ou caminhos substituíveis por configuração. Os arquivos temporários do Community Cloud não são armazenamento durável e podem ser removidos em reinicialização ou suspensão.
 - O DuckDB é inicializado sob demanda a partir dos CSVs disponíveis no repositório. O app também usa o corpus Markdown local, o modelo preditivo já versionado e o dataset CDC público.
-- A página de Relatórios só funciona depois de conectar o PostgreSQL. Antes da publicação, confirme que todas as linhas disponibilizadas são fictícias e que as credenciais têm permissão somente de leitura.
+- Sem configuração PostgreSQL, Relatórios usa `participantes.csv` e `triagens.csv` para demonstrar totais de participantes/triagens, participantes distintos com PAS ≥ 130 ou PAD ≥ 85 (critério operacional existente, não diagnóstico), contagens das categorias gravadas de risco e síndrome metabólica, valores booleanos já gravados de alerta crítico e a última pressão disponível para um ID existente. Essas operações são consultas somente leitura sobre tabelas locais; não são criados participantes/triagens nem recalculadas classificações. O indicador de PA acima é um filtro operacional do projeto, não conclusão clínica.
+- A interface identifica essa fonte como **Dados fictícios de demonstração**. As colunas disponíveis são: `participantes(paciente_id, idade, sexo)` e `triagens(triagem_id, paciente_id, data_coleta, pas, pad, glicemia, tipo_glicemia, imc, cintura, triglicerideos, hdl, score, risco, classificacao_pressorica, status_sindrome_metabolica, alerta_critico)`. Só os campos necessários às tabelas/indicadores acima são apresentados. A integração PostgreSQL continua opcional e é usada quando todos os secrets requeridos existem.
+- Antes da publicação, confirme que os CSVs versionados continuam sendo os dados fictícios destinados à demonstração. Nunca conecte dados reais de saúde a uma instância pública sem decisão e controles apropriados.
 - Não configure dados reais de saúde ou identificação. O mascaramento existente é best-effort e não garante anonimização.
 - O arquivo SQLite de histórico e os volumes/container antigos não foram apagados, migrados ou transformados por esta preparação. O código novo simplesmente não carrega esse histórico para as sessões do app.
 
 ## Páginas e segurança
 
-Chat, Relatórios e ML Tradicional continuam no menu. Relatórios depende do PostgreSQL; treinamento de ML e o carregamento de bibliotecas podem exceder os recursos gratuitos, então precisam de validação prática.
+Chat, Relatórios e ML Tradicional continuam no menu. Relatórios funciona com a fonte local fictícia sem PostgreSQL e mantém PostgreSQL opcional. Treinamento de ML e o carregamento de bibliotecas podem exceder os recursos gratuitos, então precisam de validação prática.
 
 Observabilidade e Avaliação continuam implementadas, mas ficam fora do menu por padrão. A página de traces não deve ser exposta a visitantes sem autenticação: traces podem conter perguntas e respostas, mesmo após mascaramento. Para testar localmente em ambiente controlado, habilite as flags correspondentes; não habilite as páginas administrativas em uma instância pública aberta. Langfuse também permanece desativado por padrão.
 
@@ -61,7 +63,7 @@ O histórico por sessão reduz a exposição entre sessões do app, mas não é 
 
 **Confirmado pela documentação consultada:** o Community Cloud executa apps Streamlit a partir do repositório, instala dependências Python/Linux por seus arquivos próprios e suspende apps após período sem tráfego. A documentação informa aproximadamente até 2 cores e 2,7 GB de RAM, valores sujeitos a mudanças. Verifique os [recursos e suspensão](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app#app-sleeping) no momento do deploy.
 
-**Ainda precisa de teste no Community Cloud:** instalação de todas as dependências; memória e tempo de inicialização; disponibilidade do artefato sklearn e inicialização DuckDB; funcionamento da página ML; conexão a PostgreSQL fictício; isolamento entre duas sessões reais; configuração CrewAI com o modelo OpenRouter escolhido; latência, quota, cobrança, termos e tratamento de dados desse provedor. Nenhum desses pontos é comprovado pelos testes locais de unidade.
+**Ainda precisa de teste no Community Cloud:** instalação de todas as dependências; memória e tempo de inicialização; disponibilidade do artefato sklearn e inicialização DuckDB; funcionamento da página ML; conexão a PostgreSQL fictício se essa opção for habilitada; isolamento entre duas sessões reais; configuração CrewAI com o modelo OpenRouter escolhido; latência, quota, cobrança, termos e tratamento de dados desse provedor. Os testes locais do fallback de relatórios não comprovam a conexão Cloud ou PostgreSQL.
 
 ## Verificações antes de divulgar
 

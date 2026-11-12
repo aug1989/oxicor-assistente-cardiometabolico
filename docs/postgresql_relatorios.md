@@ -10,6 +10,12 @@ A aplicação fica em `<PASTA_DO_PROJETO>\streamlit-flowise`, separada da infrae
 
 As variáveis `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD` são carregadas pelo `env_file` já existente no Compose. Para PostgreSQL no Windows, o container usa `host.docker.internal`, porta `5432`, banco `oxicor`. A senha deve ser preenchida somente no `.env` local, que permanece ignorado pelo Git e excluído da imagem. Valores Flowise existentes são preservados. Não há senha no código, SQL visível ou mensagens de erro.
 
+### Alternativa sem PostgreSQL
+
+Na preparação para hospedagem, Relatórios mantém o PostgreSQL como opção, mas não o exige. Quando nenhum dos secrets/variáveis obrigatórios `POSTGRES_` estiver configurado, a interface usa o DuckDB local inicializado dos CSVs fictícios `participantes.csv` e `triagens.csv` e mostra **Dados fictícios de demonstração**. Se a configuração estiver parcialmente preenchida, a interface informa o erro; não troca de fonte silenciosamente.
+
+As tabelas locais têm os campos `participantes(paciente_id, idade, sexo)` e `triagens(triagem_id, paciente_id, data_coleta, pas, pad, glicemia, tipo_glicemia, imc, cintura, triglicerideos, hdl, score, risco, classificacao_pressorica, status_sindrome_metabolica, alerta_critico)`. A fonte de demonstração apresenta apenas totais de participantes/triagens, contagens das categorias já registradas, triagens com alerta booleano já registrado, o filtro operacional PAS ≥ 130 ou PAD ≥ 85 e a última pressão existente por ID. O filtro operacional não constitui diagnóstico. Nenhuma linha é inventada nem classificação clínica recalculada; as consultas do relatório são somente leitura. A inicialização do DuckDB usa os CSVs existentes apenas para criar a cópia analítica local, sem gravar nos CSVs.
+
 Após configurar a senha, no diretório da aplicação:
 
 ```powershell
@@ -37,7 +43,7 @@ KPIs: total de participantes, participantes com PA acima, triagens com alerta cr
 
 `pandas>=2.2,<3` (antes transitivo do Streamlit) e `psycopg[binary]>=3.2,<4` estão declarados explicitamente. O cursor Psycopg executa SQL parametrizado e o resultado é convertido em DataFrame sem SQLAlchemy adicional. Referências: [pandas DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html) e [Psycopg](https://www.psycopg.org/psycopg3/docs/).
 
-Sem `POSTGRES_PASSWORD`, Relatórios exibe configuração pendente e Chat permanece disponível. É necessário testar `SELECT 1`, inspecionar contagens/categorias reais e testar os seis relatórios com a credencial configurada. Nunca copiar credenciais ou mensagens clínicas para logs de diagnóstico. Não inserir dados fictícios sem autorização.
+Com PostgreSQL configurado, é necessário testar `SELECT 1`, inspecionar contagens/categorias reais e testar os relatórios com a credencial configurada. Sem PostgreSQL, o fallback usa os dados fictícios locais e foi testado com a suíte `tests/test_reporting_demo.py`; isso não valida conexão externa. Nunca copiar credenciais ou mensagens clínicas para logs de diagnóstico. A demonstração deve usar apenas os dados fictícios já versionados.
 
 ## Registro histórico de validação — 09/09/2026
 
