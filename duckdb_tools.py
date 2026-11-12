@@ -13,7 +13,7 @@ _INITIALIZATION_LOCK = Lock()
 
 
 def default_seed_dir():
-    container_seed = Path('/app/seed')
+    container_seed = Path(__file__).resolve().parent / 'seed'
     return container_seed if container_seed.is_dir() else Path(__file__).resolve().parent / 'data'
 
 def normalized(text):

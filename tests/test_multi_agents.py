@@ -53,6 +53,17 @@ class DuckDBTests(unittest.TestCase):
         self.patch.stop()
         self.tmp.cleanup()
 
+    def test_seed_lookup_avoids_unrelated_app_directory(self):
+        original = Path.is_dir
+        def checked(path):
+            if str(path) == '/app/seed':
+                raise PermissionError('simulated inaccessible hosting directory')
+            return original(path)
+        with patch.object(Path, 'is_dir', checked):
+            seed = duckdb_tools.default_seed_dir()
+        self.assertEqual(seed, Path(duckdb_tools.__file__).resolve().parent / 'data')
+        self.assertTrue((seed / 'participantes.csv').is_file())
+
     def test_counts(self):
         result = json.loads(duckdb_tools.query_data('total de participantes'))
         self.assertEqual(result['resultado'][0]['total_participantes'], 2)
