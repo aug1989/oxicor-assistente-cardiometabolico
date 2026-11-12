@@ -1,20 +1,18 @@
 """Observabilidade local equivalente: traces persistentes, eventos, duração e status."""
 import json
-import os
 import sqlite3
 import time
 import uuid
 from functools import wraps
 from contextlib import contextmanager
-from pathlib import Path
 from datetime import datetime, timezone
 
+from config import ensure_parent, get_setting, runtime_path, setting_enabled
 from privacy import redact_text, redact_value
 
 @contextmanager
 def database():
-    path = Path(os.getenv('OXICOR_TRACE_DB', '/app/data/observability.sqlite3'))
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path = ensure_parent(runtime_path('OXICOR_TRACE_DB', 'observability.sqlite3'))
     db = sqlite3.connect(path, timeout=15)
     db.row_factory = sqlite3.Row
     db.execute('CREATE TABLE IF NOT EXISTS traces (id TEXT PRIMARY KEY, started_at TEXT, question TEXT, status TEXT, duration REAL, route TEXT, answer TEXT, events TEXT, error_type TEXT)')
@@ -29,6 +27,14 @@ def observed_request(function):
     @wraps(function)
     def wrapped(question, *args, **kwargs):
         question = redact_text(question)
+        if not setting_enabled('OXICOR_OBSERVABILITY_ENABLED'):
+            callback = kwargs.get('on_event')
+            if callback:
+                def safe_callback(event):
+                    callback(redact_value(dict(event)))
+                kwargs['on_event'] = safe_callback
+            return redact_value(function(question, *args, **kwargs))
+
         trace_id = str(uuid.uuid4())
         started = datetime.now(timezone.utc).isoformat()
         timer = time.monotonic()
@@ -76,11 +82,14 @@ def read_traces(limit=100):
 
 def render_observability():
     import streamlit as st
+    if not setting_enabled('OXICOR_ADMIN_PAGES_ENABLED') or not setting_enabled('OXICOR_OBSERVABILITY_ENABLED'):
+        st.error('Observabilidade está desativada. Habilite-a somente em ambiente controlado e protegido.')
+        return
     st.title('Observabilidade · OXICOR')
     from langfuse_export import configured
     if configured():
         st.info('Langfuse conectado por configuração. Confira abaixo a confirmação de envio de cada solicitação. Perguntas e respostas novas são enviadas ao projeto configurado; evite dados pessoais.')
-        st.link_button('Abrir Langfuse',os.getenv('LANGFUSE_BASE_URL','https://us.cloud.langfuse.com'))
+        st.link_button('Abrir Langfuse',get_setting('LANGFUSE_BASE_URL','https://us.cloud.langfuse.com'))
         with database() as db:
             exports=[dict(row) for row in db.execute('SELECT * FROM langfuse_exports ORDER BY rowid DESC LIMIT 20')]
         if exports:
@@ -113,9 +122,12 @@ def render_observability():
 
 def render_evaluation():
     import streamlit as st
+    if not setting_enabled('OXICOR_ADMIN_PAGES_ENABLED'):
+        st.error('Avaliação é uma página administrativa e está desativada neste ambiente.')
+        return
     st.title('Avaliação · Golden dataset')
     st.caption('Suíte local equivalente, com critérios determinísticos publicados. Não usa DeepEval nem um juiz LLM.')
-    path = Path(os.getenv('OXICOR_EVAL_RESULT', '/app/data/evaluation/results.json'))
+    path = runtime_path('OXICOR_EVAL_RESULT', 'evaluation/results.json')
     if not path.exists():
         st.info('A avaliação ainda não foi executada. Nenhum resultado foi presumido.')
         return

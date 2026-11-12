@@ -3,12 +3,12 @@
 Nenhuma query fornecida pelo usuário é executada. O filtro é parametrizado.
 Não há conexão com o SQLite usado para o histórico do chat neste módulo.
 """
-import os
 from contextlib import contextmanager
 
 import pandas as pd
 import psycopg
 
+from config import get_setting
 
 class ReportsUnavailable(Exception):
     """Mensagem pública sem credenciais, DSN ou detalhes do servidor."""
@@ -43,14 +43,15 @@ PATIENT_IDS = 'SELECT paciente_id FROM participantes ORDER BY paciente_id;'
 @contextmanager
 def connection():
     required = ('POSTGRES_HOST', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD')
-    if any(not os.environ.get(key) for key in required):
-        raise ReportsUnavailable('Conexão ainda não configurada. Preencha as variáveis POSTGRES_ no .env e recrie somente o Streamlit.')
+    settings = {key: get_setting(key) for key in required}
+    if any(not settings[key] for key in required):
+        raise ReportsUnavailable('Conexão ainda não configurada. Configure os secrets/variáveis POSTGRES_ para uma base de demonstração fictícia.')
     try:
-        port = int(os.environ.get('POSTGRES_PORT', '5432'))
+        port = int(get_setting('POSTGRES_PORT', '5432'))
         with psycopg.connect(
-            host=os.environ['POSTGRES_HOST'], port=port,
-            dbname=os.environ['POSTGRES_DB'], user=os.environ['POSTGRES_USER'],
-            password=os.environ['POSTGRES_PASSWORD'], connect_timeout=5,
+            host=settings['POSTGRES_HOST'], port=port,
+            dbname=settings['POSTGRES_DB'], user=settings['POSTGRES_USER'],
+            password=settings['POSTGRES_PASSWORD'], connect_timeout=5,
             application_name='oxicor_streamlit_relatorios',
             options='-c default_transaction_read_only=on -c statement_timeout=10000',
         ) as conn:

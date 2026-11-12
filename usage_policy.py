@@ -1,5 +1,4 @@
 """Política local aplicada antes de importar CrewAI ou chamar serviços externos."""
-import os
 import re
 import sqlite3
 import time
@@ -7,6 +6,7 @@ import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
 
+from config import get_setting, runtime_data_dir
 from privacy import redact_text
 
 class PolicyDenied(Exception):
@@ -43,7 +43,7 @@ def reserve_budget(path, now=None, hourly=30, daily=100, cooldown=15):
 @contextmanager
 def request_slot():
     import portalocker
-    root = Path(os.getenv('OXICOR_USAGE_DIR', '/app/data/usage'))
+    root = Path(get_setting('OXICOR_USAGE_DIR') or runtime_data_dir() / 'usage')
     root.mkdir(parents=True, exist_ok=True)
     lock = portalocker.Lock(str(root/'active.lock'), mode='a', timeout=0)
     try:

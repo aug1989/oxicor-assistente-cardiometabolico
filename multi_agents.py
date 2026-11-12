@@ -1,6 +1,5 @@
 """Cinco agentes CrewAI, ferramentas restritas e handoffs observáveis."""
 from __future__ import annotations
-import os
 import json
 import re
 import time
@@ -52,6 +51,7 @@ def ml_evidence(question):
     return ('O modelo está disponível. Para uma demonstração, envie um perfil fictício no formato campo=valor com: '
             + ', '.join(columns) + '. Age usa a categoria do dataset, não idade em anos. Sem esses dados, não foi calculada previsão.')
 
+from config import chat_llm_settings
 from usage_policy import guarded_request
 from observability import observed_request
 
@@ -69,14 +69,12 @@ def run_multi_agent(question, rag_consult, on_stage=None, on_event=None):
         if on_event:
             on_event(entry)
 
-    base = os.getenv('CREWAI_BASE_URL', 'http://host.docker.internal:11434').rstrip('/')
-    model = os.getenv('CREWAI_LLM', 'ollama/qwen3:4b-instruct-oxicor-cpu')
-    # Ollama expõe API OpenAI; o adaptador nativo evita o extra LiteLLM.
-    if model.startswith(('ollama/', 'ollama_chat/')):
-        model = 'openai/' + model.split('/', 1)[1]
-        base = base + '/v1' if not base.endswith('/v1') else base
-    llm = LLM(model=model, base_url=base, api_key=os.getenv('CREWAI_API_KEY', 'ollama'),
-              temperature=0, max_tokens=220, timeout=120, max_retries=0)
+    settings = chat_llm_settings()
+    if not settings['configured']:
+        raise ValueError('Configure o provedor, modelo e credencial antes de executar os agentes.')
+    llm = LLM(model=settings['model'], base_url=settings['base_url'],
+              api_key=settings['api_key'], temperature=0, max_tokens=220,
+              timeout=120, max_retries=0)
 
     tool_cache = {}
 

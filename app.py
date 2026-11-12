@@ -1,14 +1,11 @@
 import json
 import re
-import os
-import uuid
-import sqlite3
-from datetime import datetime, timezone
-from pathlib import Path
 from urllib.parse import urlparse
 import requests
 import streamlit as st
 
+from chat_state import initialize_chats, new_chat, now, select_chat as select_session_chat
+from config import chat_llm_settings, get_setting, setting_enabled
 from privacy import (
     prepare_flowise_payload,
     prepare_user_message,
@@ -16,73 +13,17 @@ from privacy import (
     redact_text,
     redact_value,
 )
-from retention import cleanup_expired_records, configured_retention_days
 
-DB_PATH = Path(os.environ.get('CHAT_HISTORY_DB', '/app/data/history.sqlite3'))
-
-
-def database():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(DB_PATH, timeout=15)
-    db.execute('CREATE TABLE IF NOT EXISTS chats (id TEXT PRIMARY KEY, title TEXT NOT NULL, session_id TEXT NOT NULL, messages TEXT NOT NULL, created_at TEXT NOT NULL)')
-    db.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
-    return db
+class ChatConfigurationError(Exception):
+    pass
 
 
-def save_chat(cid):
-    chat = st.session_state.chats[cid]
-    # Somente dados do histórico; nunca serializar ambiente ou session_state inteiro.
-    messages = [{k: m[k] for k in ('role', 'content', 'created_at', 'error', 'mode', 'pending', 'agent_trace', 'route') if k in m}
-                for m in chat['messages']]
-    with database() as db:
-        db.execute('INSERT INTO chats VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title, messages=excluded.messages',
-                   (cid, chat['title'], chat['session_id'], json.dumps(messages, ensure_ascii=False), chat['created_at']))
-    db.close()
+def create_session_chat():
+    new_chat(st.session_state)
 
 
-def save_active(cid):
-    with database() as db:
-        db.execute("INSERT INTO settings VALUES ('active_chat_id', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (cid,))
-    db.close()
-
-
-def load_history():
-    with database() as db:
-        rows = db.execute('SELECT id,title,session_id,messages,created_at FROM chats ORDER BY created_at,id').fetchall()
-        active = db.execute("SELECT value FROM settings WHERE key='active_chat_id'").fetchone()
-    db.close()
-    chats = {cid: {'title': title, 'session_id': sid, 'messages': json.loads(messages), 'created_at': created}
-             for cid, title, sid, messages, created in rows}
-    for item in chats.values():
-        for message in item['messages']:
-            if message.get('pending'):
-                message['error'] = 'Resposta interrompida antes de ser salva por completo.'
-    return chats, active[0] if active and active[0] in chats else next(iter(chats), None)
-
-
-def now():
-    return datetime.now(timezone.utc).isoformat()
-
-
-def new_chat():
-    """Callback: cria uma conversa sem apagar as anteriores."""
-    cid = str(uuid.uuid4())
-    st.session_state.chats[cid] = {
-        'title': f'Conversa {len(st.session_state.chats) + 1}',
-        'messages': [], 'session_id': cid, 'created_at': now(),
-    }
-    st.session_state.active_chat_id = cid
-    save_chat(cid)
-    save_active(cid)
-
-
-def select_chat(cid):
-    """Callback: seleciona mensagens e sessão Flowise correspondentes."""
-    st.session_state.active_chat_id = cid
-    # Reabre a versão persistida, inclusive atualizações feitas por outra aba.
-    chats, _ = load_history()
-    st.session_state.chats[cid] = chats[cid]
-    save_active(cid)
+def select_chat(chat_id):
+    select_session_chat(st.session_state, chat_id)
 
 
 def sse_events(response):
@@ -230,7 +171,12 @@ def flowise_tokens(question, chat, message):
 
 
 st.set_page_config(page_title='OXICOR · Chat, Relatórios e ML', page_icon='💬')
-area = st.sidebar.radio('Área', ['Chat', 'Relatórios', 'ML Tradicional', 'Observabilidade', 'Avaliação'], key='oxicor_area')
+areas = ['Chat', 'Relatórios', 'ML Tradicional']
+if setting_enabled('OXICOR_ADMIN_PAGES_ENABLED'):
+    areas.extend(['Observabilidade', 'Avaliação'])
+if st.session_state.get('oxicor_area') not in areas:
+    st.session_state.pop('oxicor_area', None)
+area = st.sidebar.radio('Área', areas, key='oxicor_area')
 if area == 'Observabilidade':
     from observability import render_observability
     render_observability()
@@ -247,44 +193,38 @@ if area == 'ML Tradicional':
     from ml_traditional import render_ml_traditional
     render_ml_traditional()
     st.stop()
-API_URL = os.environ.get('FLOWISE_API_URL', '').strip()
-API_KEY = os.environ.get('FLOWISE_API_KEY', '').strip()
+API_URL = get_setting('FLOWISE_API_URL').strip()
+API_KEY = get_setting('FLOWISE_API_KEY').strip()
+CHAT_MODEL = chat_llm_settings()['model']
+CHAT_CONFIGURED = chat_llm_settings()['configured']
 
 parsed_url = urlparse(API_URL)
 url_valid = parsed_url.scheme in ('http', 'https') and bool(parsed_url.netloc)
-if 'chats' not in st.session_state:
-    retention_days = configured_retention_days()
-    if retention_days is not None:
-        cleanup_expired_records(
-            DB_PATH,
-            Path(os.getenv('OXICOR_TRACE_DB', '/app/data/observability.sqlite3')),
-            retention_days,
-        )
-    st.session_state.chats, st.session_state.active_chat_id = load_history()
-    if not st.session_state.chats:
-        new_chat()
+initialize_chats(st.session_state)
 
 st.title('💬 OXICOR')
-st.caption('Converse com seu assistente. Histórico salvo localmente neste computador.')
+st.caption('O histórico fica somente na sessão atual e não é persistido. Ele pode desaparecer ao fechar a sessão ou reiniciar o aplicativo.')
 st.caption('Assistente educacional sobre saúde cardiometabólica. Não substitui avaliação profissional. Evite informar dados pessoais.')
+if not CHAT_CONFIGURED:
+    st.warning('O chat com IA depende da configuração de OPENROUTER_MODEL e OPENROUTER_API_KEY, ou das variáveis CREWAI_* para outro endpoint. Nenhuma resposta simulada será usada.')
 with st.expander('Exemplos de perguntas à base científica'):
     st.write('• Segundo a base OXICOR, quais valores definem hipertensão arterial?')
     st.write('• Segundo a base OXICOR, como a obesidade se relaciona ao risco cardiovascular?')
     st.write('• Segundo a base OXICOR, qual é a relação entre diabetes tipo 2 e risco cardiovascular?')
-if not url_valid and os.getenv('OXICOR_RAG_BACKEND', 'local') == 'flowise':
+if not url_valid and get_setting('OXICOR_RAG_BACKEND', 'local') == 'flowise':
     st.warning('FLOWISE_API_URL não configurada: perguntas que exigem RAG não poderão ser respondidas.')
 with st.sidebar:
     st.caption('Uso compartilhado: 1 atendimento por vez · 30 por hora · 100 em 24 horas. Perguntas de até 3.000 caracteres, no contexto OXICOR.')
     st.header('Conversas')
-    st.button('Nova conversa', on_click=new_chat, use_container_width=True)
+    st.button('Nova conversa', on_click=create_session_chat, use_container_width=True)
     for cid, item in reversed(list(st.session_state.chats.items())):
         st.button(redact_text(item['title']), key=f'chat_{cid}', on_click=select_chat,
                   args=(cid,), use_container_width=True,
                   type='primary' if cid == st.session_state.active_chat_id else 'secondary')
-    st.caption('Histórico local compartilhado entre as abas deste aplicativo, preservado após atualizar a página.')
+    st.caption('As conversas e os respectivos identificadores Flowise são privados desta sessão.')
     if not API_KEY or API_KEY == 'INSIRA_SUA_CHAVE_AQUI':
-        st.info('Confira FLOWISE_API_KEY no .env se o fluxo exigir autenticação.')
-    st.caption(f"Modelo CrewAI: {os.environ.get('CREWAI_LLM', 'ollama/qwen3:4b-instruct-oxicor-cpu')}")
+        st.info('FLOWISE_API_KEY não configurada; configure-a somente se o fluxo escolhido exigir autenticação.')
+    st.caption(f"Modelo CrewAI configurado: {CHAT_MODEL or 'não configurado'}")
 
 chat = st.session_state.chats[st.session_state.active_chat_id]
 for message in chat['messages']:
@@ -313,13 +253,14 @@ if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
         st.markdown(question)
     answer = {'role': 'assistant', 'content': '', 'created_at': now(), 'pending': True}
     chat['messages'].append(answer)
-    save_chat(st.session_state.active_chat_id)
     with st.chat_message('assistant'):
         try:
+            if not CHAT_CONFIGURED:
+                raise ChatConfigurationError
             from multi_agents import run_multi_agent
 
             def consult_rag(prompt):
-                backend = os.getenv('OXICOR_RAG_BACKEND', 'local').strip().lower()
+                backend = get_setting('OXICOR_RAG_BACKEND', 'local').strip().lower()
                 if backend == 'local':
                     from local_rag import consult_local
                     return consult_local(prompt)
@@ -338,7 +279,6 @@ if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
                 safe['content'] = redact_text(visible_answer(event['content']))
                 safe = redact_value(safe)
                 answer.setdefault('agent_trace', []).append(safe)
-                save_chat(st.session_state.active_chat_id)
                 st.markdown(f"**{safe['agent']} · {safe.get('kind', 'resultado')}**")
                 st.markdown(safe['content'], unsafe_allow_html=False)
 
@@ -365,9 +305,10 @@ if question := st.chat_input('Digite sua mensagem…', max_chars=3000):
             answer['error'] = 'Tempo de espera excedido. O texto parcial não foi mantido.'
         except (requests.RequestException, ValueError):
             answer['error'] = 'A resposta foi interrompida ou inválida. Confira o Flowise; o texto parcial não foi mantido.'
+        except ChatConfigurationError:
+            answer['error'] = 'Chat indisponível: configure CREWAI_BASE_URL e CREWAI_LLM com a credencial correspondente, ou OPENROUTER_MODEL e OPENROUTER_API_KEY.'
         except Exception:
-            answer['error'] = 'Não foi possível concluir a orquestração. Confira o modelo CrewAI, o Ollama e as integrações configuradas.'
+            answer['error'] = 'Não foi possível concluir a orquestração. Confira a configuração do provedor de IA, seu saldo e seus limites de uso.'
         finally:
             answer['pending'] = False
-            save_chat(st.session_state.active_chat_id)
     st.rerun()

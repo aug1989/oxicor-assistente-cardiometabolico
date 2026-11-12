@@ -9,7 +9,10 @@ from evaluate_golden import evaluate
 
 class DeliveryTests(unittest.TestCase):
     def test_trace_persists_events_and_result(self):
-        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {'OXICOR_TRACE_DB':str(Path(root)/'trace.db')}):
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {
+            'OXICOR_TRACE_DB':str(Path(root)/'trace.db'),
+            'OXICOR_OBSERVABILITY_ENABLED':'true',
+        }):
             @observed_request
             def fake(question, on_event=None):
                 on_event({'agent':'Teste','content':'evidência','kind':'ferramenta'})
@@ -21,7 +24,10 @@ class DeliveryTests(unittest.TestCase):
             self.assertEqual(saved[0]['events'][0]['content'],'evidência')
 
     def test_trace_records_failure_without_exception_message(self):
-        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {'OXICOR_TRACE_DB':str(Path(root)/'trace.db')}):
+        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {
+            'OXICOR_TRACE_DB':str(Path(root)/'trace.db'),
+            'OXICOR_OBSERVABILITY_ENABLED':'true',
+        }):
             @observed_request
             def fake(question, on_event=None):
                 raise ValueError('secret-token-example')
@@ -57,7 +63,8 @@ class DeliveryTests(unittest.TestCase):
         from ml_traditional import load_model_artifact, resolve_model_path, predict_with_saved_model
         artifact = load_model_artifact()
         self.assertNotIn('ID',artifact['feature_columns'])
-        data = pd.read_csv('/app/seed/cdc_diabetes_health_indicators.csv').iloc[:50]
+        seed = Path(__file__).resolve().parents[1] / 'data' / 'cdc_diabetes_health_indicators.csv'
+        data = pd.read_csv(seed).iloc[:50]
         actual = predict_with_saved_model(resolve_model_path(),data)
         expected = artifact['model'].predict_proba(data[artifact['feature_columns']])[:,1] >= artifact['threshold']
         np.testing.assert_array_equal(actual.predicted_diabetes,expected.astype(int))

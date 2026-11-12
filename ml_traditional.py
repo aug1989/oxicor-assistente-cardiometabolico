@@ -11,14 +11,17 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from config import runtime_data_dir, runtime_path
+
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / 'data'
-MODEL_DIR = DATA_DIR / 'models'
+MODEL_DIR = runtime_data_dir() / 'models'
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
-METADATA_PATH = DATA_DIR / 'cdc_diabetes_metadata.json'
+METADATA_PATH = runtime_data_dir() / 'cdc_diabetes_metadata.json'
 DEFAULT_MODEL_PATHS = [
     MODEL_DIR / 'etapa2' / 'cdc_diabetes_model.pkl',
     MODEL_DIR / 'cdc_diabetes_model.pkl',
+    DATA_DIR / 'models' / 'etapa2' / 'cdc_diabetes_model.pkl',
     Path.home() / 'Downloads' / 'cdc_diabetes_model.pkl',
     Path.home() / 'Downloads' / 'cdc_diabetes_model',
 ]
@@ -248,12 +251,15 @@ def _download_dataset_csv(save_path: Path) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def load_cdc_dataset(force_reload: bool = False) -> pd.DataFrame:
-    dataset_path = DATA_DIR / 'cdc_diabetes_health_indicators.csv'
-    if dataset_path.exists() and not force_reload:
-        return pd.read_csv(dataset_path)
-    seed_path = BASE_DIR / 'seed' / 'cdc_diabetes_health_indicators.csv'
-    if seed_path.exists() and not force_reload:
-        return pd.read_csv(seed_path)
+    if not force_reload:
+        seed_paths = (
+            DATA_DIR / 'cdc_diabetes_health_indicators.csv',
+            BASE_DIR / 'seed' / 'cdc_diabetes_health_indicators.csv',
+        )
+        for seed_path in seed_paths:
+            if seed_path.exists():
+                return pd.read_csv(seed_path)
+    dataset_path = runtime_path('OXICOR_TRAINING_DATASET_PATH', 'cdc_diabetes_health_indicators.csv')
     try:
         return _download_dataset_csv(dataset_path)
     except Exception as exc:  # pragma: no cover - UX and network errors

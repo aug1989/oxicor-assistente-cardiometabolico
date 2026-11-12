@@ -3,18 +3,17 @@
 Credenciais somente por variáveis de ambiente. Falha de telemetria não derruba o chat.
 """
 import json
-import os
 import uuid
 from datetime import datetime
 import requests
 
+from config import get_setting, setting_enabled
 from privacy import redact_value
 
 def configured():
-    enabled = os.getenv('OXICOR_LANGFUSE_ENABLED', '').strip().lower() in {
-        '1', 'true', 'yes', 'on',
-    }
-    return enabled and bool(os.getenv('LANGFUSE_PUBLIC_KEY') and os.getenv('LANGFUSE_SECRET_KEY'))
+    return setting_enabled('OXICOR_LANGFUSE_ENABLED') and bool(
+        get_setting('LANGFUSE_PUBLIC_KEY') and get_setting('LANGFUSE_SECRET_KEY')
+    )
 
 def attributes(values):
     return [{'key':key,'value':{'stringValue':value if isinstance(value,str) else json.dumps(value,ensure_ascii=False)}} for key,value in values.items() if value is not None]
@@ -37,7 +36,7 @@ def payload(trace):
         observation='generation' if kind=='resultado' else 'retriever' if kind=='ferramenta' and 'RAG' in event['agent'] else 'tool' if kind=='ferramenta' else 'span'
         values=dict(common,**{'langfuse.observation.type':observation,'langfuse.observation.input':event.get('prompt_input',trace['question']),'langfuse.observation.output':event['content'],'langfuse.observation.metadata':{'output_kind':'verified_application_output','timing':'measured_generation' if duration is not None else 'interval_between_events'}})
         if observation=='generation':
-            values['langfuse.observation.model.name']=os.getenv('CREWAI_LLM','ollama/qwen3:4b-instruct-oxicor-cpu')
+            values['langfuse.observation.model.name']=get_setting('CREWAI_LLM','ollama/qwen3:4b-instruct-oxicor-cpu')
             usage=event.get('token_usage') or {}
             if usage:
                 values['langfuse.observation.usage_details']={new:int(usage[old]) for old,new in [('prompt_tokens','input'),('completion_tokens','output'),('total_tokens','total')] if old in usage}
@@ -50,11 +49,11 @@ def payload(trace):
 def export_trace(trace):
     if not configured():
         return {'state':'disabled','http_status':None}
-    base=os.getenv('LANGFUSE_BASE_URL','https://us.cloud.langfuse.com').rstrip('/')
+    base=get_setting('LANGFUSE_BASE_URL','https://us.cloud.langfuse.com').rstrip('/')
     if not base.startswith('https://'):
         return {'state':'invalid_endpoint','http_status':None}
     try:
-        response=requests.post(base+'/api/public/otel/v1/traces',auth=(os.environ['LANGFUSE_PUBLIC_KEY'],os.environ['LANGFUSE_SECRET_KEY']),json=payload(trace),headers={'x-langfuse-ingestion-version':'4'},timeout=(5,15),allow_redirects=False)
+        response=requests.post(base+'/api/public/otel/v1/traces',auth=(get_setting('LANGFUSE_PUBLIC_KEY'),get_setting('LANGFUSE_SECRET_KEY')),json=payload(trace),headers={'x-langfuse-ingestion-version':'4'},timeout=(5,15),allow_redirects=False)
         if not 200<=response.status_code<300:
             return {'state':'failed','http_status':response.status_code}
         body=response.json() if response.content else {}

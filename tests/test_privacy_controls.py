@@ -98,6 +98,7 @@ class TracePrivacyTests(unittest.TestCase):
             os.environ,
             {
                 "OXICOR_TRACE_DB": str(Path(root) / "trace.sqlite3"),
+                "OXICOR_OBSERVABILITY_ENABLED": "true",
                 "LANGFUSE_PUBLIC_KEY": "",
                 "LANGFUSE_SECRET_KEY": "",
             },
@@ -133,6 +134,7 @@ class TracePrivacyTests(unittest.TestCase):
             os.environ,
             {
                 "OXICOR_TRACE_DB": str(Path(root) / "trace.sqlite3"),
+                "OXICOR_OBSERVABILITY_ENABLED": "true",
                 "LANGFUSE_PUBLIC_KEY": "",
                 "LANGFUSE_SECRET_KEY": "",
             },

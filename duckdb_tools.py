@@ -1,31 +1,48 @@
 """Consultas analíticas fixas; o agente nunca recebe SQL ou caminhos do usuário."""
 import json
-import os
 import unicodedata
 from pathlib import Path
+from threading import Lock
+import uuid
 
-DB_PATH = Path(os.getenv('OXICOR_DUCKDB_PATH', '/app/data/oxicor.duckdb'))
+from config import ensure_parent, runtime_path
+
+
+DB_PATH = runtime_path('OXICOR_DUCKDB_PATH', 'oxicor.duckdb')
+_INITIALIZATION_LOCK = Lock()
+
+
+def default_seed_dir():
+    container_seed = Path('/app/seed')
+    return container_seed if container_seed.is_dir() else Path(__file__).resolve().parent / 'data'
 
 def normalized(text):
     return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().lower()
 
-def initialize_database(seed_dir='/app/seed'):
+def initialize_database(seed_dir=None):
     import duckdb
-    if DB_PATH.exists():
-        return
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    temporary = DB_PATH.with_suffix('.building.duckdb')
-    with duckdb.connect(str(temporary)) as conn:
-        for table, name in [('participantes', 'participantes.csv'), ('triagens', 'triagens.csv'), ('cdc', 'cdc_diabetes_health_indicators.csv')]:
-            path = Path(seed_dir) / name
-            conn.execute(f'CREATE OR REPLACE TABLE {table} AS SELECT * FROM read_csv_auto(?)', [str(path)])
-    temporary.replace(DB_PATH)
+    with _INITIALIZATION_LOCK:
+        if DB_PATH.exists():
+            return
+        ensure_parent(DB_PATH)
+        temporary = DB_PATH.with_name(f'{DB_PATH.stem}.{uuid.uuid4().hex}.building.duckdb')
+        try:
+            with duckdb.connect(str(temporary)) as conn:
+                for table, name in [('participantes', 'participantes.csv'), ('triagens', 'triagens.csv'), ('cdc', 'cdc_diabetes_health_indicators.csv')]:
+                    path = Path(seed_dir or default_seed_dir()) / name
+                    conn.execute(f'CREATE OR REPLACE TABLE {table} AS SELECT * FROM read_csv_auto(?)', [str(path)])
+            temporary.replace(DB_PATH)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
 
 def query_data(question):
     import duckdb
     text = normalized(question)
     if not DB_PATH.exists():
-        return 'Base DuckDB indisponível. A inicialização do aplicativo precisa importar os CSVs.'
+        initialize_database()
+    if not DB_PATH.exists():
+        return 'Base DuckDB indisponível. Confira os arquivos de dados versionados e o caminho de runtime gravável.'
     if any(word in text for word in ('cdc', 'dataset', 'base publica')):
         sql = 'SELECT COUNT(*) AS registros, AVG(BMI) AS imc_medio, SUM(CASE WHEN Diabetes_binary=1 THEN 1 ELSE 0 END) AS classe_positiva FROM cdc'
         source = 'Dataset público CDC usado no projeto; estatísticas da amostra, não da população.'

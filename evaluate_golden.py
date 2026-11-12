@@ -1,11 +1,11 @@
 """Avalia o chat real; resultados e traces não são simulados."""
 import json
-import os
 import sys
 import time
 import unicodedata
 from pathlib import Path
 from datetime import datetime, timezone
+from config import ensure_parent, runtime_path
 from multi_agents import run_multi_agent
 from local_rag import consult_local
 
@@ -22,9 +22,9 @@ def evaluate(case, result):
     return dict(relevance=relevance, grounding=grounding, checks=checks, passed=correct_route and all(checks) and grounding != 0.0)
 
 def main():
-    cases = json.loads(Path(sys.argv[1] if len(sys.argv)>1 else '/app/evaluation/golden.json').read_text(encoding='utf-8'))
-    destination = Path(os.getenv('OXICOR_EVAL_RESULT','/app/data/evaluation/results.json'))
-    destination.parent.mkdir(parents=True, exist_ok=True)
+    golden_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent / 'evaluation' / 'golden.json'
+    cases = json.loads(golden_path.read_text(encoding='utf-8'))
+    destination = ensure_parent(runtime_path('OXICOR_EVAL_RESULT', 'evaluation/results.json'))
     report = dict(started_at=datetime.now(timezone.utc).isoformat(), methodology='Execução real do chat com CrewAI/Ollama. Relevância = fração de grupos de termos esperados presentes; aprovação exige todos e rota correta. Grounding = preservação integral das evidências das ferramentas na resposta (1 ou 0); sem ferramenta, não aplicável. São proxies determinísticos, não validação semântica completa nem comprovação clínica. Casos definidos antes da execução. Limites de uso mantidos.', results=[])
     for case in cases:
         start = time.monotonic()

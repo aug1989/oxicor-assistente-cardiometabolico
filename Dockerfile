@@ -3,7 +3,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 CREWAI_TELEMETRY_DISABLED=true OTEL_SDK_DISABLED=true
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && useradd --create-home appuser && mkdir -p /app/data && chown appuser:appuser /app/data
-COPY app.py .
+COPY app.py config.py chat_state.py .
 COPY reporting.py reports_ui.py natural_reports.py .
 COPY ml_traditional.py multi_agents.py duckdb_tools.py usage_policy.py privacy.py retention.py .
 COPY observability.py local_rag.py train_reproducible.py evaluate_golden.py initialize_app.py run_tests.py .

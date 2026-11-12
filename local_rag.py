@@ -1,14 +1,15 @@
 """Recuperação lexical TF-IDF sobre resumos locais, sem novos serviços."""
-import os
 import re
 from functools import lru_cache
 from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from config import get_setting
+
 @lru_cache(maxsize=1)
 def index():
-    root = Path(os.getenv('OXICOR_RAG_DIR', str(Path(__file__).parent/'rag')))
+    root = Path(get_setting('OXICOR_RAG_DIR', str(Path(__file__).parent/'rag')))
     chunks = []
     section_id = 0
     for path in sorted(root.glob('*.md')):

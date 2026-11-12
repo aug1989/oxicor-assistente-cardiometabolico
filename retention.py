@@ -1,14 +1,14 @@
 """Opt-in cleanup for expired local chat and observability records."""
 import json
-import os
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from config import get_setting
 
 def configured_retention_days():
-    raw = os.getenv("OXICOR_RETENTION_DAYS", "").strip()
+    raw = get_setting("OXICOR_RETENTION_DAYS").strip()
     if not raw:
         return None
     try:
