@@ -118,3 +118,6 @@ Atualização posterior à preparação descrita acima: a conta e a configuraç�
 - Execução em container temporário com código montado somente para leitura, dados de runtime temporários e observabilidade/Langfuse desativados. Nenhum container existente foi alterado.
 
 Este teste comprova esse fluxo local com o novo provedor. Não equivale à reexecução do golden dataset, à validação de todas as rotas ou à publicação. A instalação limpa e os testes na URL pública continuam pendentes. As referências acima a ausência de chamadas reais descrevem o estado anterior a esta atualização.
+## Correção de permissões na hospedagem — 12/11/2026
+
+O primeiro teste público falhou em `usage_policy.request_slot`, ao criar o diretório do controle de uso, antes da inferência. O padrão de runtime inferia `/app/data` pela existência de `/app`, o que não garante permissão de escrita na hospedagem. O padrão agora usa o diretório temporário do sistema; `OXICOR_DATA_DIR` continua permitindo configuração explícita. O Dockerfile define `/app/data` explicitamente para preservar seu volume local. O teste de regressão verifica criação real do banco de uso em diretório temporário, sem chamar modelos. A confirmação no site depende de repetir a pergunta após a atualização.

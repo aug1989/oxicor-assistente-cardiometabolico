@@ -32,8 +32,6 @@ def runtime_data_dir():
     configured = get_setting("OXICOR_DATA_DIR", "").strip()
     if configured:
         return Path(configured).expanduser()
-    if Path("/app").is_dir():
-        return Path("/app/data")
     return Path(tempfile.gettempdir()) / "oxicor"
 
 

@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 WORKDIR /app
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 CREWAI_TELEMETRY_DISABLED=true OTEL_SDK_DISABLED=true
+ENV OXICOR_DATA_DIR=/app/data PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 CREWAI_TELEMETRY_DISABLED=true OTEL_SDK_DISABLED=true
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && useradd --create-home appuser && mkdir -p /app/data && chown appuser:appuser /app/data
 COPY app.py config.py chat_state.py .

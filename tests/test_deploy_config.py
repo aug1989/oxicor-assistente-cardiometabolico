@@ -25,6 +25,13 @@ class DeployConfigurationTests(unittest.TestCase):
             self.assertEqual(target.read_text(encoding="utf-8"), "temporary fixture")
             self.assertEqual(runtime_data_dir(), Path(folder))
 
+    def test_default_usage_storage_does_not_depend_on_app_directory(self):
+        from usage_policy import request_slot
+        with tempfile.TemporaryDirectory() as folder, patch('config.get_setting', return_value=''), patch('usage_policy.get_setting', return_value=''), patch('config.tempfile.gettempdir', return_value=folder):
+            with request_slot():
+                self.assertTrue((Path(folder) / 'oxicor' / 'usage' / 'usage.sqlite3').is_file())
+            self.assertEqual(runtime_data_dir(), Path(folder) / 'oxicor')
+
     def test_conversations_are_isolated_between_session_states(self):
         first_session = {}
         second_session = {}
