@@ -1,6 +1,22 @@
-# OXICOR — Etapa 2
+# OXICOR — Assistente educacional cardiometabólico | Etapa 3
 
 Assistente educacional de saúde cardiometabólica com Streamlit, cinco papéis CrewAI, modelo preditivo integrado, DuckDB somente leitura e recuperação de trechos locais. Não realiza diagnóstico nem prescrição.
+
+
+## Aplicação publicada e entrega
+
+- **Site:** https://oxicor-aug1989.streamlit.app/
+- **Branch da publicação:** `etapa3-deploy`.
+- **Análise crítica:** [Etapa 3](docs/ANALISE_CRITICA_ETAPA3_OXICOR.md).
+- **Publicação e configuração:** [Guia de deploy](docs/DEPLOY.md).
+
+A demonstração acadêmica foi publicada no Streamlit Community Cloud e utiliza OpenRouter (`google/gemini-2.5-flash-lite`), RAG local, DuckDB com CSVs fictícios e um modelo scikit-learn salvo. Os exemplos apresentados pelo autor incluem RAG, consulta de participantes, classificação ML e Relatórios. Isso não constitui validação clínica ou teste completo de carga. O histórico é temporário por sessão; a aplicação depende da disponibilidade da hospedagem e do saldo da API.
+
+**Stack:** Python 3.12, Streamlit, CrewAI, OpenRouter, pandas, DuckDB, scikit-learn e FLAML. PostgreSQL, Flowise e Langfuse são integrações opcionais. As dependências diretas de execução e teste têm versões fixadas em arquivos separados.
+
+### Executar localmente com OpenRouter
+
+Em ambiente Python 3.12, crie um ambiente virtual, instale `requirements.txt` e execute `python -m streamlit run app.py`. Configure `OPENROUTER_MODEL` e `OPENROUTER_API_KEY` como variáveis de ambiente ou em `.streamlit/secrets.toml` privado, conforme o guia de deploy. Não versione credenciais. A alternativa Docker/Ollama descrita adiante preserva o ambiente local anterior.
 
 ## Desafio CBL
 
@@ -76,7 +92,7 @@ $repo = (Get-Location).Path
 docker run --rm --network none --mount "type=bind,source=$repo,target=/work,readonly" -w /work -e PYTHONDONTWRITEBYTECODE=1 -e PYTHONPATH=/work -e PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 -e DEEPEVAL_DISABLE_DOTENV=1 -e DEEPEVAL_TELEMETRY_OPT_OUT=YES --entrypoint python oxicor-clone-chat:latest -m pytest -q -ra -p no:cacheprovider tests/test_privacy_controls.py tests/test_langfuse_export.py tests/test_usage_policy.py tests/test_multi_agents.py::DuckDBTests::test_no_user_sql tests/test_delivery.py::DeliveryTests::test_trace_records_failure_without_exception_message
 ```
 
-O comando não monta `.env`, desabilita a rede e usa testes com dados fictícios e bancos temporários. O resultado manual informado para a imagem `oxicor-clone-chat:latest` foi `26 passed in 3.41s`; não foi reexecutado nesta atualização da documentação. A tentativa equivalente com `streamlit-flowise-chat-chat:latest` não pôde iniciar porque essa imagem não contém `pytest`. Essa contagem focalizada não deve ser confundida com os 43 testes da descoberta geral com `unittest`. Consulte [as evidências de segurança](./evaluation/security_evidence/CONTROLES_LLM_2026-11-09.md) para a origem das contagens, os limites e a distinção em relação à validação ponta a ponta da interface.
+O comando não carrega automaticamente `.env`, desabilita a rede e usa testes com dados fictícios e bancos temporários. O resultado manual informado para a imagem `oxicor-clone-chat:latest` foi `26 passed in 3.41s`; não foi reexecutado nesta atualização da documentação. A tentativa equivalente com `streamlit-flowise-chat-chat:latest` não pôde iniciar porque essa imagem não contém `pytest`. Essa contagem focalizada não deve ser confundida com os 43 testes da descoberta geral com `unittest`. Consulte [as evidências de segurança](./evaluation/security_evidence/CONTROLES_LLM_2026-11-09.md) para a origem das contagens, os limites e a distinção em relação à validação ponta a ponta da interface.
 
 A avaliação chama o fluxo real com as 15 perguntas de `evaluation/golden.json`. Mantém os limites globais de uso. Relevância mede cobertura dos grupos de termos esperados; grounding mede preservação integral das evidências; aprovação exige também a rota correta. São proxies determinísticos de regressão, não julgamento semântico completo. Casos sem ferramenta têm grounding não aplicável. A preservação é favorecida pelas restrições arquiteturais e não demonstra capacidade irrestrita do LLM.
 
@@ -90,7 +106,7 @@ Resultados ficam no diretório de dados de runtime configurado; no Docker, `/app
 
 Uma solicitação por vez, intervalo de 15 segundos, 30 solicitações por hora, 100 em 24 horas e até 3.000 caracteres. Os limites são compartilhados entre usuários; falhas admitidas também consomem quota. O filtro lexical de escopo é uma primeira barreira e não impede toda tentativa de desvio. Ollama local não cobra tarifa de API; energia e hardware não estão contabilizados.
 
-O histórico novo é mantido somente na sessão atual, sem banco compartilhado. O app não possui autenticação por usuário; não o exponha publicamente com dados reais de saúde. A aplicação mascara formatos comuns de identificadores antes do envio e exibição; isso é uma mitigação de melhor esforço, não anonimização garantida. Nomes ou dados identificáveis descritos livremente podem não ser detectados. Arquivos de históricos e traces preexistentes não são migrados, alterados ou removidos; o app novo não os lê. Relatórios consulta apenas campos existentes e usa categorias clínicas já registradas, sem recalcular classificações. A fonte local de demonstração é fictícia e deve ser usada apenas para fins acadêmicos. As respostas Markdown continuam renderizadas sem HTML bruto (`unsafe_allow_html=False`), mas links externos ainda podem ser enganosos. Os resumos RAG têm referências declaradas que ainda requerem conferência nos documentos originais. Veja [Preparação para Streamlit Community Cloud](./docs/DEPLOY.md) para limitações e passos antes de publicar.
+O histórico novo é mantido somente na sessão atual, sem banco compartilhado. O app não possui autenticação por usuário; não o exponha publicamente com dados reais de saúde. A aplicação mascara formatos comuns de identificadores antes do envio e exibição; isso é uma mitigação de melhor esforço, não anonimização garantida. Nomes ou dados identificáveis descritos livremente podem não ser detectados. Arquivos de históricos e traces preexistentes não são migrados, alterados ou removidos; o app novo não os lê. Relatórios consulta apenas campos existentes e usa categorias clínicas já registradas, sem recalcular classificações. A fonte local de demonstração é fictícia e deve ser usada apenas para fins acadêmicos. As respostas Markdown continuam renderizadas sem HTML bruto (`unsafe_allow_html=False`), mas links externos ainda podem ser enganosos. Os resumos RAG têm referências declaradas que ainda requerem conferência nos documentos originais. Veja [Publicação no Streamlit Community Cloud](./docs/DEPLOY.md) para configuração, limitações e validações pendentes.
 
 ## Entrega
 
@@ -114,4 +130,4 @@ As evidências Langfuse acompanham o relatório entregue separadamente; traces e
 
 ### Preparação OpenRouter para o deploy
 
-O deploy aceita `OPENROUTER_MODEL` (ID do catálogo) e `OPENROUTER_API_KEY` nos Secrets privados do Streamlit. O modelo e a conta ainda precisam ser configurados e testados com uma chamada real. Consulte [o guia de deploy](docs/DEPLOY.md#openrouter--configuração-para-a-demonstração-acadêmica). A alternativa local anterior permanece disponível via `CREWAI_*`.
+O deploy aceita `OPENROUTER_MODEL` (ID do catálogo) e `OPENROUTER_API_KEY` nos Secrets privados do Streamlit. A demonstração publicada utiliza `google/gemini-2.5-flash-lite`; uma nova instalação exige credencial própria e verificação dos fluxos. Consulte [o guia de deploy](docs/DEPLOY.md#openrouter--configuração-para-a-demonstração-acadêmica). A alternativa local anterior permanece disponível via `CREWAI_*`.

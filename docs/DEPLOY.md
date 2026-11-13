@@ -1,6 +1,8 @@
-# Preparação do OXICOR para Streamlit Community Cloud
+# Publicação do OXICOR no Streamlit Community Cloud
 
-Este documento descreve a configuração de hospedagem preparada na branch `etapa3-deploy`. **Ainda não há deploy publicado nem URL validada.** O provedor escolhido para preparar o deploy é OpenRouter. A conta, a chave e o modelo ainda precisam ser configurados e validados; não houve chamada real nesta preparação. O aplicativo não substitui essa configuração por respostas simuladas.
+Estado em 13/11/2026: demonstração publicada em **https://oxicor-aug1989.streamlit.app/**, a partir da branch `etapa3-deploy`, com `app.py` e Python 3.12. O provedor de IA configurado é OpenRouter, modelo `google/gemini-2.5-flash-lite`. Não há credenciais neste documento.
+
+O autor apresentou no site respostas de RAG, consulta DuckDB de sete participantes, classificação ML de perfil fictício e relatórios com sete participantes e nove triagens. São verificações de cenários de demonstração; não equivalem à validação clínica, à execução completa do golden dataset no novo provedor ou a testes de carga/isolamento real entre sessões.
 
 ## Arquivos e dependências
 
@@ -38,7 +40,7 @@ A configuração local por variáveis de ambiente e a configuração Cloud por `
 | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL` | Não | Secrets da integração Langfuse opt-in. |
 | `FLOWISE_API_URL`, `FLOWISE_API_KEY` | Não | Configuração opcional do backend RAG Flowise. |
 
-O modelo OpenRouter e sua chave ainda não estão configurados para o Community Cloud nesta etapa. A interface avisa que o chat depende do par `OPENROUTER_MODEL`/`OPENROUTER_API_KEY` ou da configuração alternativa `CREWAI_*`; ao enviar uma pergunta sem essas definições, apresenta indisponibilidade, sem chamar um modelo ou fabricar resposta.
+Para reproduzir a publicação, configure seu próprio modelo e chave no Community Cloud. A interface avisa que o chat depende do par `OPENROUTER_MODEL`/`OPENROUTER_API_KEY` ou da configuração alternativa `CREWAI_*`; ao enviar uma pergunta sem essas definições, apresenta indisponibilidade, sem chamar um modelo ou fabricar resposta.
 
 ## Dados, histórico e arquivos graváveis
 
@@ -61,9 +63,9 @@ O histórico por sessão reduz a exposição entre sessões do app, mas não é 
 
 ## Limitações confirmadas e validações pendentes
 
-**Confirmado pela documentação consultada:** o Community Cloud executa apps Streamlit a partir do repositório, instala dependências Python/Linux por seus arquivos próprios e suspende apps após período sem tráfego. A documentação informa aproximadamente até 2 cores e 2,7 GB de RAM, valores sujeitos a mudanças. Verifique os [recursos e suspensão](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app#app-sleeping) no momento do deploy.
+**Observado na demonstração publicada:** inicialização da interface, recuperação dos resumos, utilização do modelo salvo e consultas aos CSVs fictícios. O build conseguiu instalar as dependências necessárias a esses exemplos.
 
-**Ainda precisa de teste no Community Cloud:** instalação de todas as dependências; memória e tempo de inicialização; disponibilidade do artefato sklearn e inicialização DuckDB; funcionamento da página ML; conexão a PostgreSQL fictício se essa opção for habilitada; isolamento entre duas sessões reais; configuração CrewAI com o modelo OpenRouter escolhido; latência, quota, cobrança, termos e tratamento de dados desse provedor. Os testes locais do fallback de relatórios não comprovam a conexão Cloud ou PostgreSQL.
+**Ainda não validado:** carga concorrente, isolamento entre duas sessões reais, treinamento completo na nuvem, conexão real com PostgreSQL e execução completa dos quinze casos DeepEval com o provedor publicado. Não foram caracterizados custo médio, latência e disponibilidade sob uso contínuo. Consulte os limites vigentes da hospedagem ao planejar uso além da demonstração acadêmica.
 
 ## Verificações antes de divulgar
 
@@ -80,19 +82,19 @@ $env:DEEPEVAL_TELEMETRY_OPT_OUT = "YES"
 
 Essas flags evitam autoload do plugin DeepEval e desabilitam dotenv/telemetria nessa suíte unitária. Ela não executa inferência nem prova o deploy. Preserve `evaluation/golden.json`, os critérios DeepEval e as evidências anteriores. A suíte DeepEval de `evaluation/test_deepeval.py` é separada e realiza inferência real; só a execute após configurar e aprovar um provedor. A validação de ponta a ponta exige o app implantado, o provedor de IA escolhido e testes explícitos de duas sessões no navegador. Não divulgue uma URL até confirmar que o app está acessível e esses fluxos foram exercitados.
 
-## Estado desta preparação
+## Estado da entrega
 
-- **Implementado:** caminhos graváveis configuráveis; dependências de runtime e teste separadas e com versões diretas fixadas; pacote Linux; secrets/variáveis centralizados; histórico em sessão; traces desativados por padrão; páginas globais administrativas escondidas por padrão; aviso e erro claros quando a configuração de IA não existe.
-- **Pendente:** configuração e validação do OpenRouter; decisão sobre PostgreSQL para Relatórios; validação de build e recursos na plataforma; eventual autenticação antes de expor páginas administrativas; smoke test completo numa URL pública.
-- **Não feito:** deploy, contratação/ativação de serviço, chamadas pagas, alteração de containers ou limpeza de histórico/evidências existentes.
-
+- Publicação acadêmica disponível com chat, Relatórios e ML; uso apenas educacional e com dados fictícios.
+- Histórico em sessão, runtime temporário, dependências separadas e secrets privados.
+- Relatórios usa a demonstração DuckDB quando não há configuração PostgreSQL; configuração parcial e falhas de conexão não provocam troca silenciosa de fonte.
+- Autenticação, testes de carga, validação clínica e persistência durável não fazem parte do resultado demonstrado.
 
 ## OpenRouter — configuração para a demonstração acadêmica
 
 No painel de Secrets do Streamlit, use TOML com valores privados:
 
 ```toml
-OPENROUTER_MODEL = "fabricante/modelo-escolhido"
+OPENROUTER_MODEL = "google/gemini-2.5-flash-lite"
 OPENROUTER_API_KEY = "SUBSTITUA_NO_PAINEL_PRIVADO"
 OXICOR_RAG_BACKEND = "local"
 OXICOR_ADMIN_PAGES_ENABLED = "false"
@@ -100,13 +102,13 @@ OXICOR_OBSERVABILITY_ENABLED = "false"
 OXICOR_LANGFUSE_ENABLED = "false"
 ```
 
-Este bloco contém placeholders, não é uma configuração pronta para inferência. Escolha um ID real no catálogo OpenRouter antes de usar. Não há modelo pago escolhido automaticamente. Não copie a chave para o repositório, relatório ou conversa.
+Este bloco informa o modelo utilizado na demonstração e contém somente um placeholder para a chave. Insira sua credencial apenas no painel privado. Não há modelo pago escolhido automaticamente. Não copie a chave para o repositório, relatório ou conversa.
 
 `OPENROUTER_MODEL` e `OPENROUTER_API_KEY` têm prioridade sobre o perfil `CREWAI_*`, inclusive quando apenas um estiver preenchido: uma configuração incompleta bloqueia o chat em vez de usar o Ollama por engano. O endpoint é fixo em `https://openrouter.ai/api/v1`. O código acrescenta `openai/` ao ID para selecionar o adaptador compatível do CrewAI; isso não muda o endpoint para OpenAI. Os testes locais verificam a configuração; somente um teste real poderá comprovar a compatibilidade com o modelo selecionado.
 
-Crie uma chave exclusiva para esta demonstração, com teto de crédito total no painel OpenRouter e recarga automática desativada. O limite da chave precisa ser aplicado no provedor: o controle local de solicitações é compartilhado, não limita dólares e pode ser reiniciado junto ao armazenamento temporário. Uma pergunta pode fazer várias chamadas. Não habilite rotas/modelos mais caros automaticamente. Preços e taxas devem ser conferidos na compra; nenhum crédito foi adquirido por esta preparação.
+Crie uma chave exclusiva para esta demonstração, com teto de crédito total no painel OpenRouter e recarga automática desativada. O limite da chave precisa ser aplicado no provedor: o controle local de solicitações é compartilhado, não limita dólares e pode ser reiniciado junto ao armazenamento temporário. Uma pergunta pode fazer várias chamadas. Não habilite rotas/modelos mais caros automaticamente. Preços e taxas devem ser conferidos na compra. Os créditos da demonstração foram configurados pelo responsável e não acompanham o código.
 
-A publicação continua pendente de instalação limpa, configuração da conta/modelo, uma chamada com pergunta fictícia e verificação de RAG, dados, ML e isolamento entre sessões. Os resultados anteriores do golden dataset foram obtidos com a configuração anterior e não comprovam o novo modelo.
+A publicação foi concluída e os exemplos de RAG, dados, ML e Relatórios foram apresentados. O isolamento entre sessões reais permanece pendente de validação. Os resultados anteriores do golden dataset foram obtidos com a configuração anterior e não comprovam o novo modelo.
 
 Referências: https://openrouter.ai/docs/api/api-reference/api-keys/create-keys e https://openrouter.ai/pricing .
 
@@ -119,7 +121,7 @@ Atualização posterior à preparação descrita acima: a conta e a configuraç�
 - A resposta preservou a evidência local e citou `OXICOR_RAG_01_HIPERTENSAO_RESUMO.md`, incluindo o parágrafo de repouso e preparo.
 - Execução em container temporário com código montado somente para leitura, dados de runtime temporários e observabilidade/Langfuse desativados. Nenhum container existente foi alterado.
 
-Este teste comprova esse fluxo local com o novo provedor. Não equivale à reexecução do golden dataset, à validação de todas as rotas ou à publicação. A instalação limpa e os testes na URL pública continuam pendentes. As referências acima a ausência de chamadas reais descrevem o estado anterior a esta atualização.
+Este teste comprova esse fluxo local com o novo provedor. Não equivale à reexecução do golden dataset, à validação de todas as rotas ou à publicação. Este registro é histórico: posteriormente os exemplos de RAG, dados, ML e Relatórios foram apresentados na URL pública, conforme o estado atual no início deste guia.
 ## Correção de permissões na hospedagem — 12/11/2026
 
-O primeiro teste público falhou em `usage_policy.request_slot`, ao criar o diretório do controle de uso, antes da inferência. O padrão de runtime inferia `/app/data` pela existência de `/app`, o que não garante permissão de escrita na hospedagem. O padrão agora usa o diretório temporário do sistema; `OXICOR_DATA_DIR` continua permitindo configuração explícita. O Dockerfile define `/app/data` explicitamente para preservar seu volume local. O teste de regressão verifica criação real do banco de uso em diretório temporário, sem chamar modelos. A confirmação no site depende de repetir a pergunta após a atualização.
+O primeiro teste público falhou em `usage_policy.request_slot`, ao criar o diretório do controle de uso, antes da inferência. O padrão de runtime inferia `/app/data` pela existência de `/app`, o que não garante permissão de escrita na hospedagem. O padrão agora usa o diretório temporário do sistema; `OXICOR_DATA_DIR` continua permitindo configuração explícita. O Dockerfile define `/app/data` explicitamente para preservar seu volume local. O teste de regressão verifica criação real do banco de uso em diretório temporário, sem chamar modelos. Após a atualização, o autor apresentou uma resposta RAG no site. Uma falha posterior no caminho de seeds do DuckDB foi corrigida com resolução relativa ao código; a consulta de sete participantes e os relatórios fictícios foram demonstrados em seguida.
